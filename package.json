@@ -1,0 +1,22 @@
+{
+  "name": "bhabhi-thulla",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A production-ready multiplayer Bhabhi Thulla card game with React, Socket.IO, bots, and SQLite.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter @getaway-cards/shared build && pnpm --filter @getaway-cards/server build && pnpm --filter @getaway-cards/client build",
+    "dev": "pnpm --filter @getaway-cards/shared build && concurrently -n server,client -c cyan,magenta \"pnpm --filter @getaway-cards/server dev\" \"pnpm --filter @getaway-cards/client dev\"",
+    "seed": "pnpm --filter @getaway-cards/server seed",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  }
+}

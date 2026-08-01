@@ -1,0 +1,6 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @getaway-cards/shared build && pnpm --filter @getaway-cards/client build",
+  "outputDirectory": "apps/client/dist",
+  "framework": "vite"
+}

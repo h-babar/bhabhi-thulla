@@ -1,0 +1,1460 @@
+import {
+  AVATAR_PRESETS,
+  BOT_NAMES,
+  NATION_OPTIONS,
+  TRICK_REVEAL_MS,
+  applyMove,
+  applyPenalty,
+  applyTakeNextPlayerCards,
+  canStartGame,
+  chooseBotMove,
+  createGameState,
+  createId,
+  createPlayer,
+  normalizeSettings,
+  startRound,
+  toPublicGameState,
+  type AddBotPayload,
+  type BasicResponse,
+  type BotDifficulty,
+  type Card,
+  type ChatMessage,
+  type CreateRoomPayload,
+  type GameState,
+  type JoinRoomPayload,
+  type PlayWithBotsPayload,
+  type PublicGameState,
+  type QuickPlayPayload,
+  type QuitRoomResponse,
+  type ReactionMessage,
+  type RoomJoinResponse,
+  type RoomListItem,
+  type SettingsPayload,
+  type StartTournamentPayload,
+  type TournamentNation,
+  type TournamentStage,
+  type TournamentStageSlot
+} from "@getaway-cards/shared";
+import { randomBytes, randomUUID } from "node:crypto";
+import type { GameDatabase } from "./db.js";
+
+interface ManagedRoom {
+  state: GameState;
+  botTimer?: ReturnType<typeof setTimeout>;
+  celebrationTimer?: ReturnType<typeof setTimeout>;
+  trickClearTimer?: ReturnType<typeof setTimeout>;
+  turnTimer?: ReturnType<typeof setTimeout>;
+}
+
+interface SocketSeat {
+  roomCode: string;
+  participantId: string;
+}
+
+type RoomChangedHandler = (roomCode: string) => void | Promise<void>;
+
+const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const WIN_CELEBRATION_MS = 2000;
+const TOURNAMENT_STAGE_DEFS = [
+  { id: "group_stage", name: "Group Stage" },
+  { id: "quarter_final", name: "Quarter Final" },
+  { id: "semi_final", name: "Semi Final" },
+  { id: "final", name: "Final" }
+] as const;
+
+export class RoomManager {
+  private readonly rooms = new Map<string, ManagedRoom>();
+  private readonly socketSeats = new Map<string, SocketSeat>();
+
+  constructor(
+    private readonly db: GameDatabase,
+    private readonly onRoomChanged: RoomChangedHandler
+  ) {}
+
+  createRoom(payload: CreateRoomPayload): RoomJoinResponse {
+    const now = Date.now();
+    const sessionId = payload.sessionId ?? randomUUID();
+    const player = createPlayer({
+      id: randomUUID(),
+      sessionId,
+      username: payload.username,
+      avatar: payload.avatar
+    }, now);
+    const roomCode = this.generateUniqueRoomCode();
+    const state = createGameState(roomCode, player, payload.settings, now);
+
+    this.rooms.set(roomCode, { state });
+    this.commitExisting(roomCode);
+
+    return this.joinResponse(roomCode, player.id, sessionId);
+  }
+
+  quickPlay(payload: QuickPlayPayload): RoomJoinResponse {
+    const response = this.createRoom({
+      username: payload.username,
+      avatar: payload.avatar,
+      sessionId: payload.sessionId,
+      settings: {
+        ...payload.settings,
+        maxPlayers: 4,
+        targetScore: payload.settings?.targetScore ?? 5,
+        turnSeconds: payload.settings?.turnSeconds ?? 20
+      }
+    });
+
+    if (!response.ok || !response.roomCode || !response.playerId) {
+      return response;
+    }
+
+    const room = this.rooms.get(response.roomCode);
+    if (!room) {
+      return { ok: false, error: "Room disappeared before quick play could start." };
+    }
+
+    this.addBotsToRoom(room.state, 3, payload.difficulty ?? "normal");
+    this.commitState(response.roomCode, startRound(room.state));
+
+    return this.joinResponse(response.roomCode, response.playerId, response.sessionId);
+  }
+
+  playWithBots(payload: PlayWithBotsPayload): RoomJoinResponse {
+    const botCount = Math.min(5, Math.max(1, Math.round(payload.botCount)));
+    const response = this.createRoom({
+      username: payload.username,
+      avatar: payload.avatar,
+      sessionId: payload.sessionId,
+      settings: {
+        ...payload.settings,
+        maxPlayers: botCount + 1,
+        targetScore: payload.settings?.targetScore ?? 5,
+        turnSeconds: payload.settings?.turnSeconds ?? 20
+      }
+    });
+
+    if (!response.ok || !response.roomCode || !response.playerId) {
+      return response;
+    }
+
+    const room = this.rooms.get(response.roomCode);
+    if (!room) {
+      return { ok: false, error: "Room disappeared before bot play could start." };
+    }
+
+    this.addBotsToRoom(room.state, botCount, payload.difficulty);
+    this.commitState(response.roomCode, startRound(room.state));
+
+    return this.joinResponse(response.roomCode, response.playerId, response.sessionId);
+  }
+
+  startTournament(payload: StartTournamentPayload): RoomJoinResponse {
+    const now = Date.now();
+    const nation = findTournamentNation(payload.nationCode) ?? NATION_OPTIONS[0]!;
+    const sessionId = payload.sessionId ?? randomUUID();
+    const player = createPlayer({
+      id: randomUUID(),
+      sessionId,
+      username: payload.username,
+      avatar: payload.avatar
+    }, now);
+    const roomCode = this.generateUniqueRoomCode();
+    const state = createGameState(roomCode, player, {
+      maxPlayers: 4,
+      targetScore: 1,
+      turnSeconds: Math.max(10, Math.min(30, Math.round(payload.turnSeconds ?? 20))),
+      allowSpectators: true
+    }, now);
+
+    state.tournament = createTournamentState(player.id, nation, payload.difficulty, now, {
+      eventId: payload.eventId,
+      eventName: payload.eventName,
+      reward: payload.reward,
+      offline: payload.offline
+    });
+    this.prepareTournamentStage(state, now);
+
+    this.rooms.set(roomCode, { state });
+    if (payload.offline) {
+      this.commitState(roomCode, startRound(state));
+    } else {
+      this.commitExisting(roomCode);
+    }
+
+    return this.joinResponse(roomCode, player.id, sessionId);
+  }
+
+  joinRoom(payload: JoinRoomPayload): RoomJoinResponse {
+    const roomCode = normalizeRoomCode(payload.roomCode);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "No room exists for that code." };
+    }
+
+    const now = Date.now();
+    const requestedSessionId = payload.sessionId;
+    const existingPlayer = requestedSessionId
+      ? room.state.players.find((player) => player.sessionId === requestedSessionId)
+      : undefined;
+    const existingSpectator = requestedSessionId
+      ? room.state.spectators.find((spectator) => spectator.sessionId === requestedSessionId)
+      : undefined;
+
+    if (existingPlayer) {
+      existingPlayer.connected = true;
+      existingPlayer.lastSeenAt = now;
+      existingPlayer.username = payload.username.trim().slice(0, 18) || existingPlayer.username;
+      existingPlayer.avatar = payload.avatar.trim().slice(0, 24) || existingPlayer.avatar;
+      room.state.updatedAt = now;
+      this.commitExisting(roomCode);
+      return this.joinResponse(roomCode, existingPlayer.id, existingPlayer.sessionId);
+    }
+
+    if (existingSpectator) {
+      existingSpectator.connected = true;
+      existingSpectator.lastSeenAt = now;
+      room.state.updatedAt = now;
+      this.commitExisting(roomCode);
+      return this.joinResponse(roomCode, existingSpectator.id, existingSpectator.sessionId);
+    }
+
+    const sessionId = requestedSessionId ?? randomUUID();
+    const shouldSpectate =
+      payload.asSpectator ||
+      room.state.status === "playing" ||
+      room.state.players.length >= room.state.settings.maxPlayers;
+
+    if (shouldSpectate) {
+      if (!room.state.settings.allowSpectators) {
+        return { ok: false, error: "Spectators are disabled in this room." };
+      }
+
+      const spectator = {
+        id: randomUUID(),
+        sessionId,
+        username: payload.username.trim().slice(0, 18) || "Spectator",
+        avatar: payload.avatar.trim().slice(0, 24) || "Aero",
+        connected: true,
+        joinedAt: now,
+        lastSeenAt: now
+      };
+      room.state.spectators.push(spectator);
+      this.pushEvent(room.state, "join", `${spectator.username} is watching the table.`, spectator.id, now);
+      this.commitExisting(roomCode);
+      return this.joinResponse(roomCode, spectator.id, sessionId);
+    }
+
+    const player = createPlayer({
+      id: randomUUID(),
+      sessionId,
+      username: payload.username,
+      avatar: payload.avatar
+    }, now);
+    room.state.players.push(player);
+    this.pushEvent(room.state, "join", `${player.username} joined the room.`, player.id, now);
+    this.commitExisting(roomCode);
+
+    return this.joinResponse(roomCode, player.id, sessionId);
+  }
+
+  attachSocket(socketId: string, roomCode: string, participantId: string): void {
+    this.socketSeats.set(socketId, {
+      roomCode,
+      participantId
+    });
+  }
+
+  disconnectSocket(socketId: string): string | undefined {
+    const seat = this.socketSeats.get(socketId);
+    if (!seat) {
+      return undefined;
+    }
+
+    this.socketSeats.delete(socketId);
+    const room = this.rooms.get(seat.roomCode);
+    if (!room) {
+      return undefined;
+    }
+
+    const now = Date.now();
+    const player = room.state.players.find((candidate) => candidate.id === seat.participantId);
+    const spectator = room.state.spectators.find((candidate) => candidate.id === seat.participantId);
+
+    if (player && !player.isBot) {
+      player.connected = false;
+      player.ready = false;
+      player.lastSeenAt = now;
+      room.state.updatedAt = now;
+      this.commitExisting(seat.roomCode);
+      return seat.roomCode;
+    }
+
+    if (spectator) {
+      spectator.connected = false;
+      spectator.lastSeenAt = now;
+      room.state.updatedAt = now;
+      this.commitExisting(seat.roomCode);
+      return seat.roomCode;
+    }
+
+    return undefined;
+  }
+
+  getSocketSeat(socketId: string): SocketSeat | undefined {
+    return this.socketSeats.get(socketId);
+  }
+
+  getPublicState(roomCode: string, viewerId?: string): PublicGameState | undefined {
+    const room = this.rooms.get(normalizeRoomCode(roomCode));
+    return room ? toPublicGameState(room.state, viewerId) : undefined;
+  }
+
+  listRooms(): RoomListItem[] {
+    return [...this.rooms.values()]
+      .map(({ state }) => ({
+        roomCode: state.roomCode,
+        status: state.status,
+        playerCount: state.players.length,
+        maxPlayers: state.settings.maxPlayers,
+        spectatorCount: state.spectators.length,
+        round: state.round
+      }))
+      .sort((left, right) => left.roomCode.localeCompare(right.roomCode));
+  }
+
+  addBot(payload: AddBotPayload, actorId: string): BasicResponse {
+    const room = this.rooms.get(normalizeRoomCode(payload.roomCode));
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.hostId !== actorId) {
+      return { ok: false, error: "Only the host can add bots." };
+    }
+
+    if (room.state.status === "playing") {
+      return { ok: false, error: "Bots can be added between rounds." };
+    }
+
+    if (room.state.players.length >= room.state.settings.maxPlayers) {
+      return { ok: false, error: "The room is already full." };
+    }
+
+    this.addBotsToRoom(room.state, 1, payload.difficulty);
+    this.commitExisting(room.state.roomCode);
+    return { ok: true };
+  }
+
+  setPlayerReady(roomCodeInput: string, actorId: string, ready: boolean): BasicResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.status !== "lobby") {
+      return { ok: false, error: "Ready can only be changed in the lobby." };
+    }
+
+    const player = room.state.players.find((candidate) => candidate.id === actorId);
+    if (!player) {
+      return { ok: false, error: "Only seated players can ready up." };
+    }
+
+    if (player.isBot) {
+      return { ok: false, error: "Bot seats are always ready." };
+    }
+
+    const now = Date.now();
+    player.ready = ready;
+    player.connected = true;
+    player.lastSeenAt = now;
+    room.state.updatedAt = now;
+    this.pushEvent(room.state, "room", `${player.username} is ${ready ? "ready" : "not ready"}.`, actorId, now);
+    this.commitExisting(roomCode);
+    return { ok: true };
+  }
+
+  startGame(roomCodeInput: string, actorId: string): BasicResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.hostId !== actorId) {
+      return { ok: false, error: "Only the host can start the game." };
+    }
+
+    const check = canStartGame(room.state);
+    if (!check.valid) {
+      return { ok: false, error: check.reason };
+    }
+
+    this.commitState(roomCode, startRound(room.state));
+    return { ok: true };
+  }
+
+  nextRound(roomCodeInput: string, actorId: string): BasicResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.hostId !== actorId) {
+      return { ok: false, error: "Only the host can continue the match." };
+    }
+
+    if (room.state.status === "playing") {
+      return { ok: false, error: "The current round is still active." };
+    }
+
+    if (room.state.tournament) {
+      if (room.state.tournament.status !== "active") {
+        return {
+          ok: false,
+          error: room.state.tournament.status === "won"
+            ? "Tournament complete. You are the champion."
+            : "Tournament over. Start a new tournament from the home screen."
+        };
+      }
+
+      this.prepareTournamentStage(room.state);
+      room.state.roundSummaries = [];
+      this.commitState(roomCode, startRound(room.state));
+      return { ok: true };
+    }
+
+    if (room.state.status === "game_over") {
+      room.state.players = room.state.players.map((player) => ({
+        ...player,
+        score: 0,
+        roundWins: 0,
+        hand: [],
+        ready: player.isBot
+      }));
+      room.state.round = 0;
+      room.state.roundSummaries = [];
+      room.state.status = "round_over";
+    }
+
+    this.commitState(roomCode, startRound(room.state));
+    return { ok: true };
+  }
+
+  takeNextPlayerCards(roomCodeInput: string, actorId: string): BasicResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.winCelebration && room.state.winCelebration.endsAt > Date.now()) {
+      return { ok: false, error: "Celebrating the safe player. Play resumes in a moment." };
+    }
+
+    try {
+      this.commitState(roomCode, applyTakeNextPlayerCards(room.state, actorId));
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : "The hand transfer was rejected by the rules engine."
+      };
+    }
+  }
+
+  performMove(roomCodeInput: string, actorId: string, move: Parameters<typeof applyMove>[2]): BasicResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.winCelebration && room.state.winCelebration.endsAt > Date.now()) {
+      return { ok: false, error: "Celebrating the winner. Play resumes in a moment." };
+    }
+
+    try {
+      this.commitState(roomCode, applyMove(room.state, actorId, move));
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : "Move rejected by the rules engine."
+      };
+    }
+  }
+
+  updateSettings(payload: SettingsPayload, actorId: string): BasicResponse {
+    const room = this.rooms.get(normalizeRoomCode(payload.roomCode));
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.hostId !== actorId) {
+      return { ok: false, error: "Only the host can change settings." };
+    }
+
+    if (room.state.status === "playing") {
+      return { ok: false, error: "Settings can be changed between rounds." };
+    }
+
+    room.state.settings = normalizeSettings({
+      ...room.state.settings,
+      ...payload.settings
+    });
+    this.pushEvent(room.state, "settings", "Room settings were updated.", actorId);
+    this.commitExisting(room.state.roomCode);
+    return { ok: true };
+  }
+
+  quitRoom(roomCodeInput: string, actorId: string, replaceWithBot = false): QuitRoomResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    const now = Date.now();
+    const spectatorIndex = room.state.spectators.findIndex((spectator) => spectator.id === actorId);
+    if (spectatorIndex >= 0) {
+      const [spectator] = room.state.spectators.splice(spectatorIndex, 1);
+      this.removeSocketSeatsForParticipant(roomCode, actorId);
+      this.pushEvent(room.state, "leave", `${spectator?.username ?? "A spectator"} left the rail.`, actorId, now);
+      this.commitExisting(roomCode);
+      return { ok: true };
+    }
+
+    const playerIndex = room.state.players.findIndex((player) => player.id === actorId);
+    const player = room.state.players[playerIndex];
+    if (!player) {
+      return { ok: false, error: "Only seated players can quit the game." };
+    }
+
+    if (replaceWithBot) {
+      const originalName = player.username;
+      const originalAvatar = player.avatar;
+      const spectatorSessionId = player.sessionId ?? randomUUID();
+      player.sessionId = undefined;
+      player.username = originalName.endsWith(" Bot") ? originalName : `${originalName} Bot`;
+      player.connected = true;
+      player.ready = true;
+      player.isBot = true;
+      player.botDifficulty = player.botDifficulty ?? "normal";
+      player.lastSeenAt = now;
+      this.removeSocketSeatsForParticipant(roomCode, actorId);
+
+      const spectator = {
+        id: randomUUID(),
+        sessionId: spectatorSessionId,
+        username: originalName,
+        avatar: originalAvatar,
+        connected: true,
+        joinedAt: now,
+        lastSeenAt: now
+      };
+      room.state.spectators.push(spectator);
+
+      if (room.state.hostId === actorId) {
+        room.state.hostId =
+          room.state.players.find((candidate) => !candidate.isBot && candidate.id !== actorId)?.id ??
+          player.id;
+      }
+
+      this.pushEvent(
+        room.state,
+        "bot",
+        `${originalName} handed the seat to a bot. The hand continues.`,
+        player.id,
+        now
+      );
+      this.commitExisting(roomCode);
+      const spectatorState = this.getPublicState(roomCode, spectator.id);
+      return {
+        ok: Boolean(spectatorState),
+        roomCode,
+        playerId: spectator.id,
+        sessionId: spectatorSessionId,
+        state: spectatorState,
+        stayedAsSpectator: true,
+        error: spectatorState ? undefined : "Room not found."
+      };
+    }
+
+    const quitterName = player.username;
+    room.state.players.splice(playerIndex, 1);
+    room.state.escapeOrder = room.state.escapeOrder.filter((playerId) => playerId !== actorId);
+    room.state.timedOutPlayerIds = (room.state.timedOutPlayerIds ?? []).filter((playerId) => playerId !== actorId);
+    room.state.trick = room.state.trick.filter((play) => play.playerId !== actorId);
+    room.state.recentPlayedCardKeys = Object.fromEntries(
+      Object.entries(room.state.recentPlayedCardKeys ?? {}).filter(([playerId]) => playerId !== actorId)
+    );
+    if (room.state.recentPickup?.playerId === actorId) {
+      room.state.recentPickup = undefined;
+    }
+    this.removeSocketSeatsForParticipant(roomCode, actorId);
+
+    if (room.state.players.length === 0) {
+      this.rooms.delete(roomCode);
+      return { ok: true };
+    }
+
+    if (room.state.hostId === actorId) {
+      room.state.hostId = room.state.players.find((candidate) => !candidate.isBot)?.id ?? room.state.players[0]!.id;
+    }
+
+    this.pushEvent(
+      room.state,
+      "leave",
+      `${quitterName} quit the game and is Bhabhi for leaving the table.`,
+      actorId,
+      now
+    );
+
+    if (room.state.status === "playing") {
+      this.recoverAfterPlayerExit(room.state, playerIndex, now);
+    }
+
+    room.state.updatedAt = now;
+    this.commitExisting(roomCode);
+    return { ok: true };
+  }
+
+  addChat(roomCodeInput: string, actorId: string, body: string): ChatMessage | undefined {
+    const room = this.rooms.get(normalizeRoomCode(roomCodeInput));
+    if (!room) {
+      return undefined;
+    }
+
+    const sender = this.findParticipant(room.state, actorId);
+    const trimmed = body.trim().slice(0, 240);
+    if (!sender || trimmed.length === 0) {
+      return undefined;
+    }
+
+    const message: ChatMessage = {
+      id: createId("chat"),
+      at: Date.now(),
+      playerId: actorId,
+      username: sender.username,
+      avatar: sender.avatar,
+      body: trimmed
+    };
+    room.state.chatMessages = [message, ...room.state.chatMessages].slice(0, 60);
+    room.state.updatedAt = message.at;
+    this.commitExisting(room.state.roomCode);
+    return message;
+  }
+
+  addReaction(roomCodeInput: string, actorId: string, emoji: string): ReactionMessage | undefined {
+    const room = this.rooms.get(normalizeRoomCode(roomCodeInput));
+    if (!room) {
+      return undefined;
+    }
+
+    const sender = this.findParticipant(room.state, actorId);
+    const trimmed = emoji.trim().slice(0, 16);
+    if (!sender || trimmed.length === 0) {
+      return undefined;
+    }
+
+    const reaction: ReactionMessage = {
+      id: createId("reaction"),
+      at: Date.now(),
+      playerId: actorId,
+      username: sender.username,
+      emoji: trimmed
+    };
+    room.state.reactions = [reaction, ...room.state.reactions].slice(0, 20);
+    room.state.updatedAt = reaction.at;
+    this.commitExisting(room.state.roomCode);
+    return reaction;
+  }
+
+  private commitState(roomCode: string, state: GameState): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return;
+    }
+
+    room.state = state;
+    this.advanceTournamentIfNeeded(room.state);
+    this.commitExisting(roomCode);
+  }
+
+  private commitExisting(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return;
+    }
+
+    this.db.recordSnapshot(room.state);
+    this.scheduleRoom(roomCode);
+    void this.onRoomChanged(roomCode);
+  }
+
+  private scheduleRoom(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return;
+    }
+
+    if (room.botTimer) {
+      clearTimeout(room.botTimer);
+      room.botTimer = undefined;
+    }
+
+    if (room.turnTimer) {
+      clearTimeout(room.turnTimer);
+      room.turnTimer = undefined;
+    }
+
+    if (room.celebrationTimer) {
+      clearTimeout(room.celebrationTimer);
+      room.celebrationTimer = undefined;
+    }
+
+    if (room.trickClearTimer) {
+      clearTimeout(room.trickClearTimer);
+      room.trickClearTimer = undefined;
+    }
+
+    if (room.state.lastTrick) {
+      const trickId = room.state.lastTrick.id;
+      const clearDelay = Math.max(0, TRICK_REVEAL_MS - (Date.now() - room.state.lastTrick.resolvedAt));
+      room.trickClearTimer = setTimeout(() => {
+        const latest = this.rooms.get(roomCode);
+        if (!latest || latest.state.lastTrick?.id !== trickId) {
+          return;
+        }
+
+        latest.state.lastTrick = undefined;
+        latest.state.updatedAt = Date.now();
+        this.commitExisting(roomCode);
+      }, clearDelay);
+    }
+
+    if (room.state.winCelebration) {
+      const celebrationId = room.state.winCelebration.id;
+      const celebrationDelay = Math.max(0, room.state.winCelebration.endsAt - Date.now());
+      if (celebrationDelay > 0) {
+        room.celebrationTimer = setTimeout(() => {
+          const latest = this.rooms.get(roomCode);
+          if (!latest || latest.state.winCelebration?.id !== celebrationId) {
+            return;
+          }
+
+          latest.state.winCelebration = undefined;
+          latest.state.updatedAt = Date.now();
+          this.commitExisting(roomCode);
+        }, celebrationDelay);
+        return;
+      }
+
+      room.state.winCelebration = undefined;
+    }
+
+    if (room.state.status !== "playing" || !room.state.activePlayerId) {
+      return;
+    }
+
+    const activePlayer = room.state.players.find((player) => player.id === room.state.activePlayerId);
+    if (!activePlayer) {
+      return;
+    }
+
+    const now = Date.now();
+    const turnDelay = Math.max(300, (room.state.turnEndsAt ?? now + 1000) - now);
+
+    room.turnTimer = setTimeout(() => {
+      const latest = this.rooms.get(roomCode);
+      if (!latest || latest.state.status !== "playing") {
+        return;
+      }
+
+      if (latest.state.activePlayerId !== activePlayer.id) {
+        return;
+      }
+
+      const wasHuman = !activePlayer.isBot;
+      const nextState = applyPenalty(latest.state, activePlayer.id, "missing the turn timer");
+      const penalized = nextState.players.find((player) => player.id === activePlayer.id);
+      if (wasHuman && penalized?.isBot && !penalized.sessionId) {
+        this.removeSocketSeatsForParticipant(roomCode, activePlayer.id);
+      }
+
+      this.commitState(roomCode, nextState);
+    }, turnDelay + 50);
+
+    if (activePlayer.isBot) {
+      const dealDelay = room.state.dealEndsAt
+        ? Math.max(0, room.state.dealEndsAt - now)
+        : 0;
+      const revealDelay = room.state.lastTrick
+        ? Math.max(0, TRICK_REVEAL_MS - (now - room.state.lastTrick.resolvedAt))
+        : 0;
+      const botDelay = Math.min(
+        turnDelay - 100,
+        dealDelay + revealDelay + 850 + Math.floor(Math.random() * 900)
+      );
+      room.botTimer = setTimeout(() => {
+        const latest = this.rooms.get(roomCode);
+        if (!latest || latest.state.status !== "playing") {
+          return;
+        }
+
+        if (latest.state.dealEndsAt && Date.now() < latest.state.dealEndsAt) {
+          this.scheduleRoom(roomCode);
+          return;
+        }
+
+        const bot = latest.state.players.find((player) => player.id === latest.state.activePlayerId);
+        if (!bot?.isBot) {
+          return;
+        }
+
+        try {
+          const move = chooseBotMove(latest.state, bot.id, bot.botDifficulty ?? "normal");
+          this.commitState(roomCode, applyMove(latest.state, bot.id, move));
+        } catch {
+          this.commitState(roomCode, applyPenalty(latest.state, bot.id, "a confused bot move"));
+        }
+      }, Math.max(250, botDelay));
+    }
+  }
+
+  private recoverAfterPlayerExit(state: GameState, previousIndex: number, now: number): void {
+    if (state.players.length <= 1) {
+      this.finishRoundAfterExit(state, state.players[0], now);
+      state.status = "game_over";
+      state.championId = state.players[0]?.id;
+      return;
+    }
+
+    if (state.trick.length > 0 && this.trickHasNoPendingPlayers(state)) {
+      this.resolveTrickAfterExit(state, now);
+      return;
+    }
+
+    const playedIds = new Set([
+      ...state.trick.map((play) => play.playerId),
+      ...(state.timedOutPlayerIds ?? [])
+    ]);
+    const activePlayer = state.players.find((player) => player.id === state.activePlayerId);
+    const activeCannotPlay =
+      !activePlayer ||
+      activePlayer.hand.length === 0 ||
+      (state.trick.length > 0 && playedIds.has(activePlayer.id));
+
+    if (activeCannotPlay) {
+      const previousSeat = previousIndex - state.direction;
+      const pendingPlayer = this.nextPlayerAfterIndex(
+        state,
+        previousSeat,
+        (player) => player.hand.length > 0 && !playedIds.has(player.id)
+      );
+      const fallbackPlayer = this.nextPlayerAfterIndex(
+        state,
+        previousSeat,
+        (player) => player.hand.length > 0
+      );
+      state.activePlayerId = pendingPlayer?.id ?? fallbackPlayer?.id;
+    }
+
+    if (!state.activePlayerId) {
+      this.finishRoundAfterExit(state, undefined, now);
+      return;
+    }
+
+    this.setTurnClockAfterExit(state, now);
+  }
+
+  private trickHasNoPendingPlayers(state: GameState): boolean {
+    const playedIds = new Set([
+      ...state.trick.map((play) => play.playerId),
+      ...(state.timedOutPlayerIds ?? [])
+    ]);
+    return state.players.every((player) => player.hand.length === 0 || playedIds.has(player.id));
+  }
+
+  private resolveTrickAfterExit(state: GameState, now: number): void {
+    const leadSuit = state.leadSuit ?? state.trick[0]?.card.suit;
+    if (!leadSuit || state.trick.length === 0) {
+      state.trick = [];
+      state.timedOutPlayerIds = [];
+      state.leadSuit = undefined;
+      state.activePlayerId = this.nextPlayerAfterIndex(state, -state.direction, (player) => player.hand.length > 0)?.id;
+      this.setTurnClockAfterExit(state, now);
+      return;
+    }
+
+    const ledSuitPlays = state.trick.filter((play) => play.card.suit === leadSuit);
+    const highPlay = (ledSuitPlays.length > 0 ? ledSuitPlays : state.trick).reduce((best, play) =>
+      rankValue(play.card.rank) > rankValue(best.card.rank) ? play : best
+    );
+    const hasThulla = state.trick.some((play) => play.offSuit);
+    const trickCards = state.trick.map((play) => play.card);
+
+    state.lastTrick = {
+      id: createId("trick"),
+      plays: state.trick.map((play) => ({ ...play, card: { ...play.card } })),
+      leadSuit,
+      winnerId: highPlay.playerId,
+      winnerName: highPlay.username,
+      hasThulla,
+      cleared: !hasThulla,
+      pickedUpById: hasThulla ? highPlay.playerId : undefined,
+      pickedUpByName: hasThulla ? highPlay.username : undefined,
+      cardCount: trickCards.length,
+      resolvedAt: now
+    };
+
+    if (hasThulla) {
+      const punished = state.players.find((player) => player.id === highPlay.playerId);
+      if (punished) {
+        punished.hand = sortCards([...punished.hand, ...trickCards]);
+        state.recentPickup = {
+          playerId: punished.id,
+          cardIds: trickCards.map((card) => card.id),
+          at: now
+        };
+        this.pushEvent(
+          state,
+          "penalty",
+          `Dhulla! ${punished.username} picked up ${trickCards.length} card${trickCards.length === 1 ? "" : "s"}.`,
+          punished.id,
+          now
+        );
+      }
+    } else {
+      state.discardPile.push(...trickCards);
+      state.recentPickup = undefined;
+      this.pushEvent(
+        state,
+        "play",
+        `${highPlay.username} cleared the trick after the table change.`,
+        highPlay.playerId,
+        now
+      );
+    }
+
+    state.trick = [];
+    state.timedOutPlayerIds = [];
+    state.leadSuit = undefined;
+    state.trickLeaderId = undefined;
+    this.markEscapesAfterExit(state, now);
+
+    const stillHolding = state.players.filter((player) => player.hand.length > 0);
+    if (stillHolding.length <= 1) {
+      this.finishRoundAfterExit(state, stillHolding[0], now);
+      return;
+    }
+
+    const leader = state.players.find((player) => player.id === highPlay.playerId && player.hand.length > 0);
+    state.activePlayerId =
+      leader?.id ??
+      this.nextPlayerAfterId(state, highPlay.playerId, (player) => player.hand.length > 0)?.id ??
+      stillHolding[0]!.id;
+    this.setTurnClockAfterExit(state, now);
+  }
+
+  private finishRoundAfterExit(state: GameState, loser: GameState["players"][number] | undefined, now: number): void {
+    if (state.players.length === 0) {
+      return;
+    }
+
+    this.markEscapesAfterExit(state, now);
+    const bhabhi = loser ?? state.players.find((player) => player.hand.length > 0) ?? state.players[0]!;
+    const escapedIds = new Set(state.escapeOrder);
+
+    for (const player of state.players) {
+      player.ready = player.isBot;
+      if (player.id !== bhabhi.id) {
+        player.score += 1;
+        player.roundWins += 1;
+      }
+    }
+
+    state.bhabhiId = bhabhi.id;
+    state.winnerId =
+      state.escapeOrder[0] ??
+      state.players.find((player) => player.id !== bhabhi.id)?.id ??
+      bhabhi.id;
+    state.activePlayerId = undefined;
+    state.turnStartedAt = undefined;
+    state.turnEndsAt = undefined;
+    state.dealEndsAt = undefined;
+    state.pendingDraw = 0;
+    state.declaredSuit = undefined;
+    state.leadSuit = undefined;
+    state.trickLeaderId = undefined;
+    state.timedOutPlayerIds = [];
+
+    const summary = {
+      id: createId("round"),
+      round: state.round,
+      at: now,
+      winnerId: state.winnerId,
+      winnerName: state.players.find((player) => player.id === state.winnerId)?.username ?? "Escaped players",
+      pointsAwarded: 1,
+      scoreLines: state.players.map((player) => ({
+        playerId: player.id,
+        username: player.username,
+        cardsLeft: player.hand.length,
+        pointsLeft: player.hand.length,
+        escaped: escapedIds.has(player.id) || player.id !== bhabhi.id,
+        isBhabhi: player.id === bhabhi.id
+      }))
+    };
+
+    state.roundSummaries = [summary, ...state.roundSummaries].slice(0, 20);
+
+    const escapeRanks = new Map(state.escapeOrder.map((playerId, index) => [playerId, index]));
+    const champion = state.players
+      .slice()
+      .sort((left, right) => {
+        const scoreDelta = right.score - left.score;
+        if (scoreDelta !== 0) {
+          return scoreDelta;
+        }
+
+        const leftEscapeRank = escapeRanks.get(left.id) ?? Number.POSITIVE_INFINITY;
+        const rightEscapeRank = escapeRanks.get(right.id) ?? Number.POSITIVE_INFINITY;
+        return leftEscapeRank - rightEscapeRank;
+      })[0];
+
+    if (champion && (champion.score >= state.settings.targetScore || state.players.length <= 1)) {
+      state.status = "game_over";
+      state.championId = champion.id;
+      this.pushEvent(state, "game", `${champion.username} won the match after a player quit.`, champion.id, now);
+    } else {
+      state.status = "round_over";
+      this.pushEvent(
+        state,
+        "round",
+        `${bhabhi.username} is Bhabhi with ${bhabhi.hand.length} card${bhabhi.hand.length === 1 ? "" : "s"} left.`,
+        bhabhi.id,
+        now
+      );
+    }
+  }
+
+  private markEscapesAfterExit(state: GameState, now: number): void {
+    const escaped = new Set(state.escapeOrder);
+    for (const player of state.players) {
+      if (player.hand.length === 0 && !escaped.has(player.id)) {
+        state.escapeOrder.push(player.id);
+        escaped.add(player.id);
+        if (!state.winCelebration || state.winCelebration.endsAt <= now) {
+          state.winCelebration = {
+            id: createId("win"),
+            playerId: player.id,
+            username: player.username,
+            rank: state.escapeOrder.length,
+            startedAt: now,
+            endsAt: now + WIN_CELEBRATION_MS
+          };
+        }
+        this.pushEvent(state, "round", `${player.username} escaped the hand.`, player.id, now);
+      }
+    }
+  }
+
+  private nextPlayerAfterId(
+    state: GameState,
+    playerId: string,
+    predicate: (player: GameState["players"][number]) => boolean
+  ): GameState["players"][number] | undefined {
+    const index = state.players.findIndex((player) => player.id === playerId);
+    return this.nextPlayerAfterIndex(state, index, predicate);
+  }
+
+  private nextPlayerAfterIndex(
+    state: GameState,
+    fromIndex: number,
+    predicate: (player: GameState["players"][number]) => boolean
+  ): GameState["players"][number] | undefined {
+    if (state.players.length === 0) {
+      return undefined;
+    }
+
+    for (let step = 1; step <= state.players.length; step += 1) {
+      const candidate = state.players[modulo(fromIndex + step * state.direction, state.players.length)];
+      if (candidate && predicate(candidate)) {
+        return candidate;
+      }
+    }
+
+    return undefined;
+  }
+
+  private setTurnClockAfterExit(state: GameState, now: number): void {
+    const startAt = Math.max(
+      now,
+      state.winCelebration?.endsAt ?? 0,
+      state.dealEndsAt ?? 0,
+      state.lastTrick ? state.lastTrick.resolvedAt + TRICK_REVEAL_MS : 0
+    );
+    state.turnStartedAt = startAt;
+    state.turnEndsAt = startAt + state.settings.turnSeconds * 1000;
+  }
+
+  private removeSocketSeatsForParticipant(roomCode: string, participantId: string): void {
+    for (const [socketId, seat] of this.socketSeats) {
+      if (seat.roomCode === roomCode && seat.participantId === participantId) {
+        this.socketSeats.delete(socketId);
+      }
+    }
+  }
+
+  private addBotsToRoom(state: GameState, count: number, difficulty: BotDifficulty): void {
+    const now = Date.now();
+    for (let index = 0; index < count; index += 1) {
+      if (state.players.length >= state.settings.maxPlayers) {
+        return;
+      }
+
+      const botNumber = state.players.filter((player) => player.isBot).length;
+      const name = BOT_NAMES[botNumber % BOT_NAMES.length] ?? "Bot";
+      const avatar = AVATAR_PRESETS[(botNumber + 2) % AVATAR_PRESETS.length] ?? "Bolt";
+      const bot = createPlayer({
+        id: randomUUID(),
+        username: `${name} Bot`,
+        avatar,
+        isBot: true,
+        botDifficulty: difficulty
+      }, now);
+      state.players.push(bot);
+      this.pushEvent(state, "bot", `${bot.username} joined as a ${difficulty} bot.`, bot.id, now);
+    }
+  }
+
+  private prepareTournamentStage(state: GameState, now = Date.now()): void {
+    const tournament = state.tournament;
+    if (!tournament) {
+      return;
+    }
+
+    const stage = tournament.stages[tournament.stageIndex];
+    const human =
+      state.players.find((player) => player.id === tournament.playerId && !player.isBot) ??
+      state.players.find((player) => !player.isBot) ??
+      state.players[0];
+    if (!stage || !human) {
+      return;
+    }
+
+    const playerNation = findTournamentNation(tournament.playerNationCode) ?? {
+      code: tournament.playerNationCode,
+      name: tournament.playerNationName,
+      flag: "🏳️"
+    };
+    if (stage.slots.length < 4) {
+      stage.slots = createTournamentStageSlots(tournament, stage.stageNumber - 1, playerNation, human.id, now);
+    }
+
+    const resetHuman = {
+      ...human,
+      hand: [],
+      score: 0,
+      roundWins: 0,
+      connected: true,
+      ready: false,
+      lastSeenAt: now
+    };
+    tournament.playerId = resetHuman.id;
+    state.hostId = resetHuman.id;
+
+    stage.slots = stage.slots.map((slot) =>
+      slot.isUser
+        ? {
+            ...slot,
+            playerId: resetHuman.id,
+            username: resetHuman.username
+          }
+        : slot
+    );
+
+    const players: GameState["players"] = [resetHuman];
+    stage.slots = stage.slots.map((slot) => {
+      if (slot.isUser) {
+        return {
+          ...slot,
+          playerId: resetHuman.id,
+          username: resetHuman.username
+        };
+      }
+
+      const bot = createPlayer({
+        id: randomUUID(),
+        username: `${slot.name} Bot`,
+        avatar: slot.code,
+        isBot: true,
+        botDifficulty: tournament.difficulty
+      }, now);
+      players.push(bot);
+      return {
+        ...slot,
+        playerId: bot.id,
+        username: bot.username
+      };
+    });
+
+    state.players = players;
+    state.settings = normalizeSettings({
+      maxPlayers: 4,
+      targetScore: 1,
+      turnSeconds: state.settings.turnSeconds,
+      allowSpectators: true
+    });
+    tournament.updatedAt = now;
+    this.pushEvent(
+      state,
+      "start",
+      `${stage.name}: ${tournament.playerNationName} enters the table.`,
+      resetHuman.id,
+      now
+    );
+  }
+
+  private advanceTournamentIfNeeded(state: GameState, now = Date.now()): void {
+    const tournament = state.tournament;
+    if (!tournament || tournament.status !== "active" || state.status === "playing" || !state.winnerId) {
+      return;
+    }
+
+    const stage = tournament.stages[tournament.stageIndex];
+    if (!stage || stage.status !== "active") {
+      return;
+    }
+
+    const winner = state.players.find((player) => player.id === state.winnerId);
+    if (!winner) {
+      return;
+    }
+
+    const winnerSlot =
+      stage.slots.find((slot) => slot.playerId === winner.id) ??
+      stage.slots.find((slot) => slot.isUser && winner.id === tournament.playerId);
+    stage.winnerNationCode = winnerSlot?.code;
+    stage.winnerName = winner.username;
+    stage.completedAt = now;
+
+    if (winner.id === tournament.playerId) {
+      stage.status = "complete";
+      if (tournament.stageIndex >= tournament.stages.length - 1) {
+        tournament.status = "won";
+        this.pushEvent(state, "game", `${winner.username} won the tournament for ${tournament.playerNationName}.`, winner.id, now);
+      } else {
+        tournament.stageIndex += 1;
+        const nextStage = tournament.stages[tournament.stageIndex];
+        if (nextStage) {
+          nextStage.status = "active";
+        }
+        this.pushEvent(state, "game", `${winner.username} advanced to ${nextStage?.name ?? "the next stage"}.`, winner.id, now);
+      }
+    } else {
+      stage.status = "eliminated";
+      tournament.status = "eliminated";
+      this.pushEvent(state, "game", `${winner.username} eliminated ${tournament.playerNationName} from the tournament.`, winner.id, now);
+    }
+
+    tournament.updatedAt = now;
+  }
+
+  private findParticipant(
+    state: GameState,
+    participantId: string
+  ): { username: string; avatar: string } | undefined {
+    return (
+      state.players.find((player) => player.id === participantId) ??
+      state.spectators.find((spectator) => spectator.id === participantId)
+    );
+  }
+
+  private joinResponse(
+    roomCode: string,
+    participantId: string,
+    sessionId?: string
+  ): RoomJoinResponse {
+    const state = this.getPublicState(roomCode, participantId);
+    return {
+      ok: Boolean(state),
+      roomCode,
+      playerId: participantId,
+      sessionId,
+      state,
+      error: state ? undefined : "Room not found."
+    };
+  }
+
+  private pushEvent(
+    state: GameState,
+    type: GameState["history"][number]["type"],
+    message: string,
+    playerId?: string,
+    now = Date.now()
+  ): void {
+    state.history = [
+      {
+        id: createId("event"),
+        at: now,
+        type,
+        message,
+        playerId
+      },
+      ...state.history
+    ].slice(0, 80);
+    state.updatedAt = now;
+  }
+
+  private generateUniqueRoomCode(): string {
+    let code = generateRoomCode();
+    while (this.rooms.has(code)) {
+      code = generateRoomCode();
+    }
+    return code;
+  }
+}
+
+export function normalizeRoomCode(roomCode: string): string {
+  return roomCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
+
+function createTournamentState(
+  playerId: string,
+  playerNation: TournamentNation,
+  difficulty: BotDifficulty,
+  now: number,
+  event: Pick<StartTournamentPayload, "eventId" | "eventName" | "reward" | "offline"> = {}
+): NonNullable<GameState["tournament"]> {
+  const tournament: NonNullable<GameState["tournament"]> = {
+    id: `tournament_${now.toString(36)}_${randomBytes(3).toString("hex")}`,
+    eventId: event.eventId?.trim().slice(0, 64),
+    eventName: event.eventName?.trim().slice(0, 64),
+    reward: event.reward?.trim().slice(0, 96),
+    offline: event.offline,
+    status: "active",
+    playerId,
+    playerNationCode: playerNation.code,
+    playerNationName: playerNation.name,
+    difficulty,
+    stageIndex: 0,
+    stages: [],
+    startedAt: now,
+    updatedAt: now
+  };
+
+  tournament.stages = TOURNAMENT_STAGE_DEFS.map((definition, stageIndex) => ({
+    id: definition.id,
+    name: definition.name,
+    stageNumber: stageIndex + 1,
+    status: stageIndex === 0 ? "active" : "locked",
+    slots: stageIndex === 0
+      ? createTournamentStageSlots(tournament, stageIndex, playerNation, playerId, now)
+      : []
+  }));
+
+  return tournament;
+}
+
+function createTournamentStageSlots(
+  tournament: NonNullable<GameState["tournament"]>,
+  stageIndex: number,
+  playerNation: TournamentNation,
+  playerId: string,
+  now: number
+): TournamentStageSlot[] {
+  const usedCodes = new Set(
+    tournament.stages
+      .flatMap((stage) => stage.slots)
+      .filter((slot) => !slot.isUser)
+      .map((slot) => slot.code)
+  );
+  const freshOpponents = NATION_OPTIONS.filter((nation) =>
+    nation.code !== playerNation.code && !usedCodes.has(nation.code)
+  );
+  const fallbackOpponents = NATION_OPTIONS.filter((nation) => nation.code !== playerNation.code);
+  const pool = freshOpponents.length >= 3 ? freshOpponents : fallbackOpponents;
+  const opponents = rotateNations(
+    pool,
+    (now + stageIndex * 7 + tournament.id.length) % Math.max(1, pool.length)
+  );
+  const stageOpponents = Array.from({ length: 3 }, (_, index) =>
+    opponents[index % opponents.length]!
+  );
+
+  return [
+    {
+      ...playerNation,
+      seed: 1,
+      isUser: true,
+      playerId
+    },
+    ...stageOpponents.map((nation, index) => ({
+      ...nation,
+      seed: index + 2,
+      isUser: false
+    }))
+  ];
+}
+
+function rotateNations(nations: TournamentNation[], offset: number): TournamentNation[] {
+  if (nations.length === 0) {
+    return nations;
+  }
+
+  const start = offset % nations.length;
+  return [...nations.slice(start), ...nations.slice(0, start)];
+}
+
+function findTournamentNation(code: string): TournamentNation | undefined {
+  const normalized = code.trim().toUpperCase();
+  return NATION_OPTIONS.find((nation) => nation.code === normalized);
+}
+
+function generateRoomCode(): string {
+  const bytes = randomBytes(6);
+  let code = "";
+  for (let index = 0; index < 6; index += 1) {
+    code += ROOM_CODE_ALPHABET[bytes[index]! % ROOM_CODE_ALPHABET.length];
+  }
+  return code;
+}
+
+function sortCards(cards: Card[]): Card[] {
+  const suitOrder = {
+    spades: 0,
+    hearts: 1,
+    diamonds: 2,
+    clubs: 3
+  } as const;
+
+  return cards.slice().sort((left, right) => {
+    const suitDiff = suitOrder[left.suit] - suitOrder[right.suit];
+    return suitDiff === 0 ? rankValue(left.rank) - rankValue(right.rank) : suitDiff;
+  });
+}
+
+function rankValue(rank: Card["rank"]): number {
+  const values: Record<Card["rank"], number> = {
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "10": 10,
+    J: 11,
+    Q: 12,
+    K: 13,
+    A: 14
+  };
+  return values[rank];
+}
+
+function modulo(value: number, length: number): number {
+  return ((value % length) + length) % length;
+}
