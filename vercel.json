@@ -2,11 +2,5 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @getaway-cards/shared build && pnpm --filter @getaway-cards/client build",
   "outputDirectory": "apps/client/dist",
-  "framework": "vite",
-  "rewrites": [
-    {
-      "source": "/__/auth/:path*",
-      "destination": "https://bhabhi-thulla-f12f0.firebaseapp.com/__/auth/:path*"
-    }
-  ]
+  "framework": "vite"
 }

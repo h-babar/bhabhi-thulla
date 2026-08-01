@@ -11,7 +11,6 @@ import {
   getRedirectResult,
   onIdTokenChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
   type User
 } from "firebase/auth";
@@ -131,10 +130,6 @@ export const useAuthStore = create<AuthStore>()(
         set({ status: "authenticating", error: undefined });
         if (mergeGuest && get().guest) sessionStorage.setItem(pendingMergeKey, "1");
         try {
-          if (import.meta.env.PROD) {
-            await signInWithRedirect(auth, googleProvider);
-            return;
-          }
           const result = await signInWithPopup(auth, googleProvider);
           await hydrateGoogleUser(result.user, set, get, mergeGuest);
         } catch (error) {
