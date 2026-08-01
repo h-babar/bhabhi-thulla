@@ -1,4 +1,19 @@
-import { Cloud, CloudRain, Flame, Moon, Music, Snowflake, Sparkles, Sun, Volume2, VolumeX } from "lucide-react";
+import {
+  Check,
+  Cloud,
+  CloudRain,
+  Flame,
+  Moon,
+  Music,
+  Save,
+  Snowflake,
+  Sparkles,
+  Sun,
+  Volume2,
+  VolumeX,
+  X
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   useGameStore,
   type CardStyle,
@@ -70,6 +85,8 @@ const WEATHER_OPTIONS: Array<{ id: WeatherTheme; label: string; icon: typeof Sun
 ];
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const theme = useGameStore((store) => store.theme);
   const muted = useGameStore((store) => store.muted);
   const musicEnabled = useGameStore((store) => store.musicEnabled);
@@ -91,37 +108,67 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const setTableTheme = useGameStore((store) => store.setTableTheme);
   const setTableLayout = useGameStore((store) => store.setTableLayout);
   const setWeatherTheme = useGameStore((store) => store.setWeatherTheme);
-  const savePreference = (preferences: Parameters<typeof updateGuest>[0]["preferences"]) => {
-    if (!preferences) return;
-    if (registeredProfile) {
-      void updateRegistered({ preferences });
-    } else if (guestProfile) {
+  useEffect(() => {
+    if (open) setSaved(false);
+  }, [open]);
+
+  const saveSettings = async () => {
+    const preferences = {
+      cardBack: cardStyle,
+      tableTheme,
+      soundEnabled: !muted,
+      musicEnabled
+    };
+
+    setSaving(true);
+    const didSave = registeredProfile ? await updateRegistered({ preferences }) : true;
+    if (guestProfile && !registeredProfile) {
       updateGuest({ preferences });
     }
+    setSaving(false);
+    if (!didSave) return;
+    setSaved(true);
+    window.setTimeout(onClose, 450);
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Settings">
-      <div className="grid gap-5">
-        <button className="secondary-button justify-center" onClick={openProfile}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Settings"
+      eyebrow="Game preferences"
+      wide
+      className="settings-modal"
+      footer={
+        <div className="settings-modal-actions">
+          <button type="button" className="settings-close-action" onClick={onClose}>
+            <X size={17} />
+            Close
+          </button>
+          <button type="button" className="settings-save-action" onClick={saveSettings} disabled={saving || saved}>
+            {saved ? <Check size={18} /> : <Save size={18} />}
+            {saving ? "Saving..." : saved ? "Saved" : "Save Settings"}
+          </button>
+        </div>
+      }
+    >
+      <div className="settings-modal-content grid gap-5">
+        <button className="secondary-button settings-profile-action justify-center" onClick={openProfile}>
           Manage player profile
         </button>
 
-        <div>
-          <p className="mb-2 text-sm font-black text-slate-900 dark:text-white">Card Style</p>
+        <div className="settings-section">
+          <p className="settings-section-title mb-2 text-sm font-black text-slate-900 dark:text-white">Card Style</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {CARD_STYLE_OPTIONS.map((option) => (
               <button
                 key={option.id}
-                className={`grid justify-items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-black transition ${
+                className={`settings-choice grid justify-items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-black transition ${
                   cardStyle === option.id
                     ? "border-teal-400 bg-teal-300/25 text-teal-950 shadow-glow dark:text-teal-100"
                     : "border-slate-300 bg-white/70 text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-200"
                 }`}
-                onClick={() => {
-                  setCardStyle(option.id);
-                  savePreference({ cardBack: option.id });
-                }}
+                onClick={() => setCardStyle(option.id)}
               >
                 <span className={`h-10 w-7 rounded-md border border-white/60 shadow-sm ${option.accent}`} />
                 {option.label}
@@ -130,8 +177,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-sm font-black text-slate-900 dark:text-white">Table Layout</p>
+        <div className="settings-section">
+          <p className="settings-section-title mb-2 text-sm font-black text-slate-900 dark:text-white">Table Layout</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {TABLE_LAYOUT_OPTIONS.map((option) => (
               <button
@@ -150,21 +197,18 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-sm font-black text-slate-900 dark:text-white">Table Theme</p>
+        <div className="settings-section">
+          <p className="settings-section-title mb-2 text-sm font-black text-slate-900 dark:text-white">Table Theme</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
             {TABLE_THEME_OPTIONS.map((option) => (
               <button
                 key={option.id}
-                className={`grid justify-items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-black transition ${
+                className={`settings-choice grid justify-items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-black transition ${
                   tableTheme === option.id
                     ? "border-amber-300 bg-amber-200/25 text-amber-950 shadow-glow dark:text-amber-100"
                     : "border-slate-300 bg-white/70 text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-200"
                 }`}
-                onClick={() => {
-                  setTableTheme(option.id);
-                  savePreference({ tableTheme: option.id });
-                }}
+                onClick={() => setTableTheme(option.id)}
               >
                 <span className={`h-8 w-14 rounded-full border border-white/60 shadow-sm ${option.accent}`} />
                 {option.label}
@@ -173,15 +217,15 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-sm font-black text-slate-900 dark:text-white">Weather Theme</p>
+        <div className="settings-section">
+          <p className="settings-section-title mb-2 text-sm font-black text-slate-900 dark:text-white">Weather Theme</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {WEATHER_OPTIONS.map((option) => {
               const Icon = option.icon;
               return (
                 <button
                   key={option.id}
-                  className={`grid justify-items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-black transition ${
+                  className={`settings-choice grid justify-items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-black transition ${
                     weatherTheme === option.id
                       ? "border-teal-400 bg-teal-300/25 text-teal-950 shadow-glow dark:text-teal-100"
                       : "border-slate-300 bg-white/70 text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-200"
@@ -196,7 +240,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="settings-section settings-sound-section grid gap-3 sm:grid-cols-2">
           <div className="appearance-toggle" role="group" aria-label="Page appearance">
             <button
               type="button"
@@ -219,26 +263,20 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
           <button
             className="secondary-button justify-between rounded-2xl"
-            onClick={() => {
-              setMuted(!muted);
-              savePreference({ soundEnabled: muted });
-            }}
+            onClick={() => setMuted(!muted)}
           >
             <span>{muted ? "Sound muted" : "Sound on"}</span>
             {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-300/70 bg-white/60 p-3 dark:border-white/10 dark:bg-white/10">
+        <div className="settings-audio-panel rounded-2xl border border-slate-300/70 bg-white/60 p-3 dark:border-white/10 dark:bg-white/10">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white">
               <Music size={18} />
               Match music
             </div>
-            <button className="secondary-button px-3 py-2" onClick={() => {
-              setMusicEnabled(!musicEnabled);
-              savePreference({ musicEnabled: !musicEnabled });
-            }}>
+            <button className="secondary-button px-3 py-2" onClick={() => setMusicEnabled(!musicEnabled)}>
               {musicEnabled ? "On" : "Off"}
             </button>
           </div>
