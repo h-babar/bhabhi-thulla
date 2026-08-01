@@ -136,3 +136,51 @@ test("disconnecting an old socket keeps a player with another socket online", ()
     true
   );
 });
+
+test("quick play marks the room so its compact HUD can omit round progress", async () => {
+  const db = new FakeDatabase();
+  const manager = new RoomManager(
+    db,
+    () => undefined,
+    () => undefined,
+    { reconnectGraceMs: 10 }
+  );
+  const created = manager.quickPlay({ username: "Tester", avatar: "Aero" });
+
+  assert.equal(manager.getPublicState(created.roomCode!, created.playerId!)?.roomMode, "quick");
+  manager.quitRoom(created.roomCode!, created.playerId!, false);
+  await wait(25);
+  assert.equal(manager.getPublicState(created.roomCode!), undefined);
+});
+
+test("a replacement spectator can reclaim their original bot seat", () => {
+  const db = new FakeDatabase();
+  const manager = new RoomManager(db, () => undefined);
+  const created = manager.createRoom({
+    username: "Tester",
+    avatar: "Aero",
+    settings: { maxPlayers: 2 }
+  });
+  manager.addBot(
+    { roomCode: created.roomCode!, difficulty: "normal" },
+    created.playerId!
+  );
+
+  const replaced = manager.quitRoom(created.roomCode!, created.playerId!, true);
+  const spectator = replaced.state?.spectators.find((candidate) => candidate.isYou);
+  assert.equal(replaced.stayedAsSpectator, true);
+  assert.equal(spectator?.replacedPlayerId, created.playerId);
+  assert.equal(
+    replaced.state?.players.find((player) => player.id === created.playerId)?.isBot,
+    true
+  );
+
+  const reclaimed = manager.reclaimBotSeat(created.roomCode!, replaced.playerId!);
+  const restoredPlayer = reclaimed.state?.players.find((player) => player.isYou);
+  assert.equal(reclaimed.ok, true);
+  assert.equal(reclaimed.playerId, created.playerId);
+  assert.equal(reclaimed.sessionId, created.sessionId);
+  assert.equal(restoredPlayer?.username, "Tester");
+  assert.equal(restoredPlayer?.isBot, false);
+  assert.equal(reclaimed.state?.spectators.length, 0);
+});

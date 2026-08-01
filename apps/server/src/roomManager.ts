@@ -160,6 +160,7 @@ export class RoomManager {
       return { ok: false, error: "Room disappeared before quick play could start." };
     }
 
+    room.state.roomMode = "quick";
     this.addBotsToRoom(room.state, 3, payload.difficulty ?? "normal");
     this.commitState(response.roomCode, startRound(room.state));
 
@@ -189,6 +190,7 @@ export class RoomManager {
       return { ok: false, error: "Room disappeared before bot play could start." };
     }
 
+    room.state.roomMode = "bots";
     this.addBotsToRoom(room.state, botCount, payload.difficulty);
     this.commitState(response.roomCode, startRound(room.state));
 
@@ -213,6 +215,7 @@ export class RoomManager {
       allowSpectators: true
     }, now);
 
+    state.roomMode = "tournament";
     state.tournament = createTournamentState(player.id, nation, payload.difficulty, now, {
       eventId: payload.eventId,
       eventName: payload.eventName,
@@ -611,6 +614,10 @@ export class RoomManager {
     }
 
     if (replaceWithBot) {
+      if (room.state.status === "game_over") {
+        return { ok: false, error: "The match has finished, so this seat can no longer be replaced." };
+      }
+
       const originalName = player.username;
       const originalAvatar = player.avatar;
       const spectatorSessionId = player.sessionId ?? randomUUID();
@@ -626,6 +633,7 @@ export class RoomManager {
       const spectator = {
         id: randomUUID(),
         sessionId: spectatorSessionId,
+        replacedPlayerId: player.id,
         username: originalName,
         avatar: originalAvatar,
         connected: true,
@@ -701,6 +709,65 @@ export class RoomManager {
     room.state.updatedAt = now;
     this.commitExisting(roomCode);
     return { ok: true };
+  }
+
+  reclaimBotSeat(roomCodeInput: string, actorId: string): QuitRoomResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    if (room.state.status === "game_over") {
+      return { ok: false, error: "The match has finished. This seat can no longer be rejoined." };
+    }
+
+    const spectatorIndex = room.state.spectators.findIndex(
+      (spectator) => spectator.id === actorId
+    );
+    const spectator = room.state.spectators[spectatorIndex];
+    if (!spectator?.replacedPlayerId) {
+      return { ok: false, error: "You do not have a bot-controlled seat to reclaim." };
+    }
+
+    const player = room.state.players.find(
+      (candidate) => candidate.id === spectator.replacedPlayerId
+    );
+    if (!player?.isBot) {
+      return { ok: false, error: "That seat is no longer controlled by a bot." };
+    }
+
+    const now = Date.now();
+    const sessionId = spectator.sessionId ?? randomUUID();
+    player.sessionId = sessionId;
+    player.username = spectator.username;
+    player.avatar = spectator.avatar;
+    player.connected = true;
+    player.ready = false;
+    player.isBot = false;
+    player.botDifficulty = undefined;
+    player.missedTurnStreak = 0;
+    player.lastSeenAt = now;
+
+    room.state.spectators.splice(spectatorIndex, 1);
+    this.removeSocketSeatsForParticipant(roomCode, actorId);
+
+    if (room.state.status === "playing" && room.state.activePlayerId === player.id) {
+      room.state.turnStartedAt = now;
+      room.state.turnEndsAt = now + room.state.settings.turnSeconds * 1000;
+    }
+
+    room.state.updatedAt = now;
+    this.pushEvent(
+      room.state,
+      "join",
+      `${player.username} reclaimed the seat from the bot.`,
+      player.id,
+      now
+    );
+    this.commitExisting(roomCode);
+
+    return this.joinResponse(roomCode, player.id, sessionId);
   }
 
   addChat(roomCodeInput: string, actorId: string, body: string): ChatMessage | undefined {

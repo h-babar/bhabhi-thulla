@@ -140,6 +140,7 @@ export interface ClientToServerEvents {
   "room:list": (ack: (rooms: RoomListItem[]) => void) => void;
   "room:addBot": (payload: AddBotPayload, ack: (response: BasicResponse) => void) => void;
   "room:quit": (payload: QuitRoomPayload, ack: (response: QuitRoomResponse) => void) => void;
+  "room:reclaimSeat": (payload: RoomActionPayload, ack: (response: QuitRoomResponse) => void) => void;
   "game:start": (payload: RoomActionPayload, ack: (response: BasicResponse) => void) => void;
   "game:nextRound": (payload: RoomActionPayload, ack: (response: BasicResponse) => void) => void;
   "game:move": (payload: MovePayload, ack: (response: BasicResponse) => void) => void;

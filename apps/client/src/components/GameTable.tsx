@@ -52,6 +52,7 @@ export function GameTable() {
   const playerId = useGameStore((store) => store.playerId);
   const leaveRoom = useGameStore((store) => store.leaveRoom);
   const quitGame = useGameStore((store) => store.quitGame);
+  const reclaimSeat = useGameStore((store) => store.reclaimSeat);
   const addBot = useGameStore((store) => store.addBot);
   const setReady = useGameStore((store) => store.setReady);
   const startGame = useGameStore((store) => store.startGame);
@@ -141,6 +142,14 @@ export function GameTable() {
     Boolean(state.lastTrick && dealNow < state.lastTrick.resolvedAt + TRICK_REVEAL_MS);
   const me = state.players.find((player) => player.id === playerId);
   const isSpectator = !me;
+  const mySpectator = state.spectators.find(
+    (spectator) => spectator.id === playerId || spectator.isYou
+  );
+  const replacementSeat = mySpectator?.replacedPlayerId
+    ? state.players.find((player) => player.id === mySpectator.replacedPlayerId)
+    : undefined;
+  const canReclaimSeat =
+    state.status !== "game_over" && Boolean(replacementSeat?.isBot);
   const isHost = playerId === state.hostId;
   const isCelebratingWin = Boolean(state.winCelebration);
   const isMyTurn =
@@ -300,7 +309,12 @@ export function GameTable() {
             <Home size={18} />
           </button>
           {inActivePlay ? (
-            <div className="active-room-stack" aria-label={`Room ${state.roomCode}, round ${state.round}`}>
+            <div
+              className="active-room-stack"
+              aria-label={state.roomMode === "quick"
+                ? `Room ${state.roomCode}`
+                : `Room ${state.roomCode}, round ${state.round}`}
+            >
               <button type="button" className="active-room-code" onClick={copyRoomLink}>
                 <span>
                   <small>Room code</small>
@@ -308,10 +322,12 @@ export function GameTable() {
                 </span>
                 <Copy size={16} />
               </button>
-              <div className="active-round-card">
-                <small>Round</small>
-                <strong>{state.round} / {state.settings.targetScore}</strong>
-              </div>
+              {state.roomMode !== "quick" ? (
+                <div className="active-round-card">
+                  <small>Round</small>
+                  <strong>{state.round} / {state.settings.targetScore}</strong>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div>
@@ -389,7 +405,16 @@ export function GameTable() {
                 {isSpectator ? (
                   <div className="spectator-table-note rounded-2xl bg-white/10 p-4 text-center font-bold">
                     <Eye className="mx-auto mb-2" />
-                    Spectator mode: you can watch, chat, and react.
+                    <p>Spectator mode: you can watch, chat, and react.</p>
+                    {canReclaimSeat ? (
+                      <button
+                        className="primary-button mx-auto mt-3 px-4 py-2"
+                        onClick={reclaimSeat}
+                      >
+                        <Play size={17} />
+                        Rejoin game
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -453,8 +478,10 @@ export function GameTable() {
               </div>
 
               {isSpectator ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-5 text-center text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">
-                  Spectators do not receive private hand data.
+                <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">
+                  {canReclaimSeat
+                    ? `${replacementSeat?.username ?? "Your bot"} is holding your cards. Rejoin any time before the match ends.`
+                    : "Spectators do not receive private hand data."}
                 </div>
               ) : isDealPhase ? (
                 <div className="grid min-h-[5.75rem] place-items-center rounded-2xl border border-dashed border-teal-300/60 bg-white/55 p-4 text-center text-sm font-black text-slate-700 dark:border-teal-200/30 dark:bg-white/10 dark:text-slate-200 sm:min-h-[6.35rem]">

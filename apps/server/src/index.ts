@@ -191,6 +191,21 @@ io.on("connection", (socket) => {
     emitRoomList();
   });
 
+  socket.on("room:reclaimSeat", (payload, ack) => {
+    const seat = requireSeat(socket.id, payload.roomCode);
+    if (!seat.ok) {
+      ack(withGameError(seat));
+      return;
+    }
+
+    const response = roomManager.reclaimBotSeat(payload.roomCode, seat.participantId);
+    if (response.ok) {
+      attachIfJoined(socket.id, response.roomCode, response.playerId);
+    }
+    ack(withGameError(response));
+    emitRoomList();
+  });
+
   socket.on("game:start", (payload, ack) => {
     const seat = requireSeat(socket.id, payload.roomCode);
     if (!seat.ok) {

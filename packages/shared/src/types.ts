@@ -21,6 +21,8 @@ export type GameStatus = "lobby" | "playing" | "round_over" | "game_over";
 
 export type FunMode = "classic" | "turbo" | "marathon" | "reverse";
 
+export type RoomMode = "private" | "quick" | "bots" | "tournament";
+
 export type TournamentStatus = "active" | "won" | "eliminated";
 
 export type TournamentStageId = "group_stage" | "quarter_final" | "semi_final" | "final";
@@ -77,6 +79,7 @@ export interface PlayerState {
 export interface SpectatorState {
   id: string;
   sessionId?: string;
+  replacedPlayerId?: string;
   username: string;
   avatar: string;
   connected: boolean;
@@ -141,6 +144,7 @@ export interface RoundSummary {
 
 export interface GameState {
   roomCode: string;
+  roomMode?: RoomMode;
   hostId: string;
   status: GameStatus;
   settings: GameSettings;

@@ -117,6 +117,7 @@ interface GameStore {
   sendReaction: (emoji: string) => void;
   updateRoomSettings: (settings: Partial<GameSettings>) => void;
   quitGame: (replaceWithBot?: boolean) => void;
+  reclaimSeat: () => void;
   leaveRoom: () => void;
   clearError: () => void;
 }
@@ -591,6 +592,26 @@ export const useGameStore = create<GameStore>()(
               roomCode: undefined,
               playerId: undefined,
               state: undefined,
+              error: undefined
+            });
+          });
+        },
+        reclaimSeat: () => {
+          const roomCode = get().roomCode;
+          if (!roomCode) return;
+          ensureSocket().emit("room:reclaimSeat", { roomCode }, (response) => {
+            if (!response.ok || !response.state || !response.roomCode || !response.playerId) {
+              set({ error: response.error ?? "Could not rejoin your seat." });
+              return;
+            }
+
+            playSound("click", get().muted);
+            set({
+              screen: "room",
+              roomCode: response.roomCode,
+              playerId: response.playerId,
+              sessionId: response.sessionId ?? get().sessionId,
+              state: response.state,
               error: undefined
             });
           });

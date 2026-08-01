@@ -72,6 +72,7 @@ export function createGameState(
 ): GameState {
   const game: GameState = {
     roomCode,
+    roomMode: "private",
     hostId: host.id,
     status: "lobby",
     settings: normalizeSettings(settings),

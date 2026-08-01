@@ -37,12 +37,15 @@ Server broadcasts:
 roomState       # public table state without player hands
 privateHand     # only the receiving player's hand
 room:closed     # terminal room cleanup notification
+room:reclaimSeat # take back a seat temporarily handed to a bot
 gameError       # rejected action or room error
 ```
 
 The browser stores `sessionId` and `roomCode` in localStorage so a refresh can reconnect the same player to the same seat. Disconnected players remain seated and can return; a quitting player can also hand their seat to a bot so the game continues.
 
 Rooms follow a bounded lifecycle. Completed matches remain open for 12 seconds so players can see the result, then the server removes the room and its live SQLite snapshot. Rooms with no connected human players disappear from discovery immediately and are deleted after a five-minute reconnect grace period. Active tournament stages are retained so the host can advance to the next stage.
+
+Players who choose **Replace me with bot** remain at the table as spectators and can reclaim that exact seat until the match finishes. The server preserves the seat's hand, score, and turn order while validating that only its original owner can take it back.
 
 ## Folder Structure
 
