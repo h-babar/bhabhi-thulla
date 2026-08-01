@@ -153,7 +153,7 @@ The default local config still works if `SQLITE_PATH` is omitted.
 5. Set the backend-only `FIREBASE_PROJECT_ID`. Token verification uses Firebase's public signing certificates, so no long-lived service-account private key is required.
 6. Restart the client and server after changing environment variables.
 
-The browser completes the official Firebase Google popup flow on desktop and redirect flow on mobile. It sends the resulting Firebase ID token over HTTPS to the API. The API verifies the token with Firebase Admin before reading or changing a profile. The server never stores raw Google OAuth access tokens.
+The browser completes the official Firebase Google popup flow. It sends the resulting Firebase ID token over HTTPS to the API. The API verifies the token with Firebase Admin before reading or changing a profile. The server never stores raw Google OAuth access tokens.
 
 ### Guest upgrade
 

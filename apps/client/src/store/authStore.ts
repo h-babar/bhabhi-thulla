@@ -11,7 +11,6 @@ import {
   getRedirectResult,
   onIdTokenChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
   type User
 } from "firebase/auth";
@@ -131,10 +130,6 @@ export const useAuthStore = create<AuthStore>()(
         set({ status: "authenticating", error: undefined });
         if (mergeGuest && get().guest) sessionStorage.setItem(pendingMergeKey, "1");
         try {
-          if (isMobileBrowser()) {
-            await signInWithRedirect(auth, googleProvider);
-            return;
-          }
           const result = await signInWithPopup(auth, googleProvider);
           await hydrateGoogleUser(result.user, set, get, mergeGuest);
         } catch (error) {
@@ -292,10 +287,6 @@ function defaultPreferences(): PlayerPreferences {
 
 function cleanDisplayName(value: string): string {
   return value.replace(/[^\p{L}\p{N} ._'-]/gu, "").trim().replace(/\s+/g, " ").slice(0, 24);
-}
-
-function isMobileBrowser(): boolean {
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia("(max-width: 720px)").matches;
 }
 
 function authErrorMessage(error: unknown): string {
