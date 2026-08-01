@@ -27,6 +27,7 @@ import {
   type QuickPlayPayload,
   type QuitRoomResponse,
   type ReactionMessage,
+  type RoomClosedPayload,
   type RoomJoinResponse,
   type RoomListItem,
   type SettingsPayload,
@@ -42,6 +43,9 @@ interface ManagedRoom {
   state: GameState;
   botTimer?: ReturnType<typeof setTimeout>;
   celebrationTimer?: ReturnType<typeof setTimeout>;
+  cleanupAt?: number;
+  cleanupReason?: RoomClosedPayload["reason"];
+  cleanupTimer?: ReturnType<typeof setTimeout>;
   trickClearTimer?: ReturnType<typeof setTimeout>;
   turnTimer?: ReturnType<typeof setTimeout>;
 }
@@ -52,9 +56,24 @@ interface SocketSeat {
 }
 
 type RoomChangedHandler = (roomCode: string) => void | Promise<void>;
+type RoomClosedHandler = (payload: RoomClosedPayload) => void | Promise<void>;
+type RoomDatabase = Pick<GameDatabase, "recordSnapshot" | "deleteRoomSnapshot">;
+
+export interface RoomLifecycleOptions {
+  matchResultsMs?: number;
+  reconnectGraceMs?: number;
+}
+
+export interface RoomCleanupPlan {
+  delayMs: number;
+  message: string;
+  reason: RoomClosedPayload["reason"];
+}
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const WIN_CELEBRATION_MS = 2000;
+const MATCH_RESULTS_MS = 12_000;
+const RECONNECT_GRACE_MS = 5 * 60_000;
 const TOURNAMENT_STAGE_DEFS = [
   { id: "group_stage", name: "Group Stage" },
   { id: "quarter_final", name: "Quarter Final" },
@@ -62,13 +81,43 @@ const TOURNAMENT_STAGE_DEFS = [
   { id: "final", name: "Final" }
 ] as const;
 
+export function getRoomCleanupPlan(
+  state: GameState,
+  options: RoomLifecycleOptions = {}
+): RoomCleanupPlan | undefined {
+  const matchComplete =
+    state.status === "game_over" && state.tournament?.status !== "active";
+  if (matchComplete) {
+    return {
+      delayMs: options.matchResultsMs ?? MATCH_RESULTS_MS,
+      reason: "match_complete",
+      message: "Match complete. The room closed automatically."
+    };
+  }
+
+  const hasConnectedGuest =
+    state.players.some((player) => !player.isBot && player.connected) ||
+    state.spectators.some((spectator) => spectator.connected);
+  if (!hasConnectedGuest) {
+    return {
+      delayMs: options.reconnectGraceMs ?? RECONNECT_GRACE_MS,
+      reason: "abandoned",
+      message: "The room closed after everyone disconnected."
+    };
+  }
+
+  return undefined;
+}
+
 export class RoomManager {
   private readonly rooms = new Map<string, ManagedRoom>();
   private readonly socketSeats = new Map<string, SocketSeat>();
 
   constructor(
-    private readonly db: GameDatabase,
-    private readonly onRoomChanged: RoomChangedHandler
+    private readonly db: RoomDatabase,
+    private readonly onRoomChanged: RoomChangedHandler,
+    private readonly onRoomClosed: RoomClosedHandler = () => undefined,
+    private readonly lifecycleOptions: RoomLifecycleOptions = {}
   ) {}
 
   createRoom(payload: CreateRoomPayload): RoomJoinResponse {
@@ -216,6 +265,20 @@ export class RoomManager {
       return this.joinResponse(roomCode, existingSpectator.id, existingSpectator.sessionId);
     }
 
+    if (room.state.status === "game_over" && room.state.tournament?.status !== "active") {
+      return { ok: false, error: "That match is complete and the room is closing." };
+    }
+
+    const hasConnectedGuest =
+      room.state.players.some((player) => !player.isBot && player.connected) ||
+      room.state.spectators.some((spectator) => spectator.connected);
+    if (!hasConnectedGuest) {
+      return {
+        ok: false,
+        error: "That room is reserved for its disconnected players to reconnect."
+      };
+    }
+
     const sessionId = requestedSessionId ?? randomUUID();
     const shouldSpectate =
       payload.asSpectator ||
@@ -256,6 +319,14 @@ export class RoomManager {
   }
 
   attachSocket(socketId: string, roomCode: string, participantId: string): void {
+    const previousSeat = this.socketSeats.get(socketId);
+    if (
+      previousSeat &&
+      (previousSeat.roomCode !== roomCode || previousSeat.participantId !== participantId)
+    ) {
+      this.disconnectSocket(socketId);
+    }
+
     this.socketSeats.set(socketId, {
       roomCode,
       participantId
@@ -269,6 +340,15 @@ export class RoomManager {
     }
 
     this.socketSeats.delete(socketId);
+    const participantStillConnected = [...this.socketSeats.values()].some(
+      (candidate) =>
+        candidate.roomCode === seat.roomCode &&
+        candidate.participantId === seat.participantId
+    );
+    if (participantStillConnected) {
+      return seat.roomCode;
+    }
+
     const room = this.rooms.get(seat.roomCode);
     if (!room) {
       return undefined;
@@ -309,6 +389,11 @@ export class RoomManager {
 
   listRooms(): RoomListItem[] {
     return [...this.rooms.values()]
+      .filter(({ state }) =>
+        state.status !== "game_over" &&
+        (state.players.some((player) => !player.isBot && player.connected) ||
+          state.spectators.some((spectator) => spectator.connected))
+      )
       .map(({ state }) => ({
         roomCode: state.roomCode,
         status: state.status,
@@ -425,16 +510,10 @@ export class RoomManager {
     }
 
     if (room.state.status === "game_over") {
-      room.state.players = room.state.players.map((player) => ({
-        ...player,
-        score: 0,
-        roundWins: 0,
-        hand: [],
-        ready: player.isBot
-      }));
-      room.state.round = 0;
-      room.state.roundSummaries = [];
-      room.state.status = "round_over";
+      return {
+        ok: false,
+        error: "The match is complete. Start a new table from the home screen."
+      };
     }
 
     this.commitState(roomCode, startRound(room.state));
@@ -595,7 +674,11 @@ export class RoomManager {
     this.removeSocketSeatsForParticipant(roomCode, actorId);
 
     if (room.state.players.length === 0) {
-      this.rooms.delete(roomCode);
+      this.closeRoom(roomCode, {
+        roomCode,
+        reason: "empty",
+        message: "The room closed because no players remain."
+      });
       return { ok: true };
     }
 
@@ -690,7 +773,89 @@ export class RoomManager {
 
     this.db.recordSnapshot(room.state);
     this.scheduleRoom(roomCode);
+    this.scheduleCleanup(roomCode);
     void this.onRoomChanged(roomCode);
+  }
+
+  private scheduleCleanup(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return;
+    }
+
+    const plan = getRoomCleanupPlan(room.state, this.lifecycleOptions);
+    if (!plan) {
+      this.clearCleanupTimer(room);
+      return;
+    }
+
+    if (room.cleanupReason !== plan.reason || room.cleanupAt === undefined) {
+      this.clearCleanupTimer(room);
+      room.cleanupReason = plan.reason;
+      room.cleanupAt = Date.now() + plan.delayMs;
+    }
+
+    if (room.cleanupTimer) {
+      return;
+    }
+
+    room.cleanupTimer = setTimeout(() => {
+      const latest = this.rooms.get(roomCode);
+      if (!latest) {
+        return;
+      }
+
+      latest.cleanupTimer = undefined;
+      const latestPlan = getRoomCleanupPlan(latest.state, this.lifecycleOptions);
+      if (!latestPlan || latestPlan.reason !== latest.cleanupReason) {
+        this.clearCleanupTimer(latest);
+        return;
+      }
+
+      this.closeRoom(roomCode, {
+        roomCode,
+        reason: latestPlan.reason,
+        message: latestPlan.message
+      });
+    }, Math.max(0, room.cleanupAt - Date.now()));
+  }
+
+  private clearCleanupTimer(room: ManagedRoom): void {
+    if (room.cleanupTimer) {
+      clearTimeout(room.cleanupTimer);
+    }
+    room.cleanupTimer = undefined;
+    room.cleanupAt = undefined;
+    room.cleanupReason = undefined;
+  }
+
+  private closeRoom(roomCode: string, payload: RoomClosedPayload): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return;
+    }
+
+    for (const timer of [
+      room.botTimer,
+      room.celebrationTimer,
+      room.cleanupTimer,
+      room.trickClearTimer,
+      room.turnTimer
+    ]) {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
+
+    for (const [socketId, seat] of this.socketSeats) {
+      if (seat.roomCode === roomCode) {
+        this.socketSeats.delete(socketId);
+      }
+    }
+
+    this.rooms.delete(roomCode);
+    this.db.deleteRoomSnapshot(roomCode);
+    void this.onRoomClosed(payload);
   }
 
   private scheduleRoom(roomCode: string): void {

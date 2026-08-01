@@ -29,9 +29,17 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   }
 });
 
-const roomManager = new RoomManager(db, async (roomCode) => {
-  await broadcastRoom(roomCode);
-});
+const roomManager = new RoomManager(
+  db,
+  async (roomCode) => {
+    await broadcastRoom(roomCode);
+  },
+  async (payload) => {
+    io.to(payload.roomCode).emit("room:closed", payload);
+    io.in(payload.roomCode).socketsLeave(payload.roomCode);
+    emitRoomList();
+  }
+);
 
 app.use(
   cors({
@@ -383,6 +391,11 @@ function attachIfJoined(
   const socket = io.sockets.sockets.get(socketId);
   if (!socket) {
     return;
+  }
+
+  const previousSeat = roomManager.getSocketSeat(socketId);
+  if (previousSeat && previousSeat.roomCode !== normalizeRoomCode(roomCode)) {
+    socket.leave(previousSeat.roomCode);
   }
 
   socket.join(roomCode);

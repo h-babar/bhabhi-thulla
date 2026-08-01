@@ -481,7 +481,12 @@ export function GameTable() {
               )}
             </section>
 
-            <RoundSummaryPanel state={state} isHost={isHost} nextRound={nextRound} />
+            <RoundSummaryPanel
+              state={state}
+              isHost={isHost}
+              nextRound={nextRound}
+              leaveRoom={leaveRoom}
+            />
           </div>
 
           <div className={clsx("grid min-w-0 gap-3 lg:grid-cols-3", inActivePlay && "hidden")}>
@@ -1760,26 +1765,29 @@ function TournamentBracket({
 function RoundSummaryPanel({
   state,
   isHost,
-  nextRound
+  nextRound,
+  leaveRoom
 }: {
   state: PublicGameState;
   isHost: boolean;
   nextRound: () => void;
+  leaveRoom: () => void;
 }) {
   const summary = state.roundSummaries[0];
   if (!summary || state.status === "playing") {
     return null;
   }
 
-  const tournamentComplete = Boolean(state.tournament && state.tournament.status !== "active");
+  const matchComplete =
+    state.status === "game_over" && state.tournament?.status !== "active";
   const nextButtonLabel = state.tournament
     ? state.tournament.status === "active"
       ? "Next Stage"
       : state.tournament.status === "won"
-        ? "Tournament Won"
-        : "Eliminated"
+        ? "Return Home"
+        : "Return Home"
     : state.status === "game_over"
-      ? "Play Again"
+      ? "Return Home"
       : "Next Round";
   const bhabhi = summary.scoreLines.find((line) => line.isBhabhi);
   const rankedLines = summary.scoreLines.slice().sort((left, right) => {
@@ -1799,8 +1807,13 @@ function RoundSummaryPanel({
             {bhabhi?.username ?? "Last player"} is Bhabhi
           </h2>
         </div>
-        {isHost ? (
-          <button className="primary-button py-2.5" disabled={tournamentComplete} onClick={nextRound}>
+        {matchComplete ? (
+          <button className="primary-button py-2.5" onClick={leaveRoom}>
+            <Home size={17} />
+            {nextButtonLabel}
+          </button>
+        ) : isHost ? (
+          <button className="primary-button py-2.5" onClick={nextRound}>
             <RotateCcw size={17} />
             {nextButtonLabel}
           </button>

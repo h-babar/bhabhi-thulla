@@ -113,9 +113,16 @@ export interface PrivateHandPayload {
   hand: Card[];
 }
 
+export interface RoomClosedPayload {
+  roomCode: string;
+  reason: "match_complete" | "abandoned" | "empty";
+  message: string;
+}
+
 export interface ServerToClientEvents {
   "room:state": (state: PublicGameState) => void;
   "room:error": (message: string) => void;
+  "room:closed": (payload: RoomClosedPayload) => void;
   "room:list": (rooms: RoomListItem[]) => void;
   "chat:message": (message: ChatMessage) => void;
   "reaction:message": (reaction: ReactionMessage) => void;

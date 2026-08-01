@@ -53,6 +53,10 @@ export class GameDatabase {
     }
   }
 
+  deleteRoomSnapshot(roomCode: string): void {
+    this.db.prepare("DELETE FROM rooms WHERE room_code = ?").run(roomCode);
+  }
+
   listRecentHistory(limit = 20): PersistedRoundHistory[] {
     const rows = this.db
       .prepare(

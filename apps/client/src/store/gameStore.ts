@@ -250,6 +250,15 @@ export const useGameStore = create<GameStore>()(
             set({ error: message });
           });
 
+          socket.on("room:closed", (payload) => {
+            if (get().roomCode !== payload.roomCode) {
+              return;
+            }
+
+            stopBackgroundMusic();
+            expireRoomSession(payload.reason === "match_complete" ? undefined : payload.message);
+          });
+
           socket.on("gameError", (message) => {
             set({ error: message });
           });

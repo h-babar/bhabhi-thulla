@@ -8,6 +8,7 @@
     "build": "pnpm --filter @getaway-cards/shared build && pnpm --filter @getaway-cards/server build && pnpm --filter @getaway-cards/client build",
     "dev": "pnpm --filter @getaway-cards/shared build && concurrently -n server,client -c cyan,magenta \"pnpm --filter @getaway-cards/server dev\" \"pnpm --filter @getaway-cards/client dev\"",
     "seed": "pnpm --filter @getaway-cards/server seed",
+    "test": "pnpm --filter @getaway-cards/shared build && pnpm --filter @getaway-cards/server test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   },
