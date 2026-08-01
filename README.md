@@ -141,7 +141,8 @@ Backend on Render:
 
 1. Use the included `render.yaml`.
 2. Set `CLIENT_ORIGIN` to the Vercel frontend URL.
-3. Set `SQLITE_PATH=/var/data/bhabhi-thulla.sqlite` for persistent disk storage.
+3. The included free-service blueprint stores SQLite at `/tmp/bhabhi-thulla.sqlite`. Free instances lose local data when they restart or spin down.
+4. For durable production history, upgrade the service, attach a persistent disk, and set `SQLITE_PATH=/var/data/bhabhi-thulla.sqlite`.
 
 Backend on Railway:
 

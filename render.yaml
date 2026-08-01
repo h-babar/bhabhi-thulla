@@ -2,19 +2,16 @@ services:
   - type: web
     name: bhabhi-thulla-api
     env: node
-    plan: starter
+    plan: free
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @getaway-cards/shared build && pnpm --filter @getaway-cards/server build
     startCommand: pnpm --filter @getaway-cards/server start
+    healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: 24.14.0
       - key: CLIENT_ORIGIN
         sync: false
       - key: SQLITE_PATH
-        value: /var/data/bhabhi-thulla.sqlite
+        value: /tmp/bhabhi-thulla.sqlite
       - key: SEED_DEMO
         value: true
-    disk:
-      name: bhabhi-thulla-data
-      mountPath: /var/data
-      sizeGB: 1
