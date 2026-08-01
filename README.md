@@ -131,6 +131,12 @@ The default local config still works if `SQLITE_PATH` is omitted.
 
 ## Deployment
 
+Live deployment:
+
+- Game: https://bhabhi-thulla-alpha.vercel.app
+- API health: https://bhabhi-thulla-api.onrender.com/health
+- Source: https://github.com/h-babar/bhabhi-thulla
+
 Frontend on Vercel:
 
 1. Deploy the repository root.
