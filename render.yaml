@@ -15,3 +15,5 @@ services:
         value: /tmp/bhabhi-thulla.sqlite
       - key: SEED_DEMO
         value: true
+      - key: FIREBASE_PROJECT_ID
+        sync: false

@@ -43,6 +43,7 @@ import { PlayerBadge } from "./PlayerBadge.js";
 import { RulesModal } from "./RulesModal.js";
 import { ScoreBoard } from "./ScoreBoard.js";
 import { SettingsModal } from "./SettingsModal.js";
+import { ProfileMenu } from "./auth/ProfileMenu.js";
 
 type ActiveTableTool = "none" | "odds" | "score" | "chat";
 type HandSortMode = "deal" | "suit" | "rank";
@@ -355,6 +356,7 @@ export function GameTable() {
           <button className="icon-button" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
             <Settings size={18} />
           </button>
+          <ProfileMenu compact onSettings={() => setSettingsOpen(true)} />
         </div>
       </header>
 

@@ -19,5 +19,6 @@ export const config = {
   clientOrigins: originsFromEnv(),
   sqlitePath: resolve(process.env.SQLITE_PATH ?? "./data/bhabhi-thulla.sqlite"),
   seedDemo: (process.env.SEED_DEMO ?? "true").toLowerCase() === "true",
-  nodeEnv: process.env.NODE_ENV ?? "development"
+  nodeEnv: process.env.NODE_ENV ?? "development",
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID?.trim()
 };

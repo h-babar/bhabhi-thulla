@@ -58,6 +58,9 @@ export function createPlayer(input: NewPlayerInput, now = Date.now()): PlayerSta
     ready: input.isBot ?? false,
     isBot: input.isBot ?? false,
     botDifficulty: input.botDifficulty,
+    accountType: input.accountType ?? (input.isBot ? "bot" : "guest"),
+    profileId: input.profileId,
+    rankBadge: input.rankBadge,
     missedTurnStreak: 0,
     joinedAt: now,
     lastSeenAt: now

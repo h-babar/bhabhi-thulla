@@ -29,6 +29,9 @@ import { CardView } from "./CardView.js";
 import { CountdownTimer } from "./engagement/CountdownTimer.js";
 import { RulesModal } from "./RulesModal.js";
 import { SettingsModal } from "./SettingsModal.js";
+import { ProfileMenu } from "./auth/ProfileMenu.js";
+import { PlayerAvatar } from "./auth/PlayerAvatar.js";
+import { useAuthStore } from "../store/authStore.js";
 
 interface HomeScreenProps {
   initialRoomCode?: string;
@@ -48,7 +51,6 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
   const avatar = useGameStore((store) => store.avatar);
   const rooms = useGameStore((store) => store.rooms);
   const socketStatus = useGameStore((store) => store.socketStatus);
-  const updateProfile = useGameStore((store) => store.updateProfile);
   const createRoom = useGameStore((store) => store.createRoom);
   const joinRoom = useGameStore((store) => store.joinRoom);
   const quickPlay = useGameStore((store) => store.quickPlay);
@@ -70,6 +72,10 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
   const [targetScore, setTargetScore] = useState(5);
   const [turnSeconds, setTurnSeconds] = useState(20);
   const [funMode, setFunMode] = useState<FunMode>("classic");
+  const authGuest = useAuthStore((store) => store.guest);
+  const authProfile = useAuthStore((store) => store.profile);
+  const openProfile = useAuthStore((store) => store.openProfile);
+  const account = authProfile ?? authGuest;
 
   useEffect(() => {
     setJoinCode((current) => current || initialRoomCode || "");
@@ -128,6 +134,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
             <button className="home-nav-button is-icon" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
               <Settings size={18} />
             </button>
+            <ProfileMenu compact onSettings={() => setSettingsOpen(true)} />
           </div>
         </header>
 
@@ -213,27 +220,15 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
           </motion.section>
 
           <aside className="home-command-deck">
-            <div className="home-profile-row">
-              <div className="home-profile-avatar">{avatar.slice(0, 2).toUpperCase()}</div>
-              <div className="min-w-0 flex-1">
-                <p>Player profile</p>
-                <input
-                  value={username}
-                  maxLength={18}
-                  onChange={(event) => updateProfile({ username: event.target.value })}
-                  aria-label="Username"
-                />
-              </div>
-              <label className="home-avatar-field">
-                <span>Tag</span>
-                <input
-                  value={avatar}
-                  maxLength={24}
-                  onChange={(event) => updateProfile({ avatar: event.target.value })}
-                  aria-label="Avatar label"
-                />
-              </label>
-            </div>
+            <button className="home-profile-row" onClick={openProfile}>
+              <PlayerAvatar name={account?.displayName ?? username} avatarId={account?.avatarId ?? avatar} photoUrl={authProfile?.photoUrl} frame={authProfile?.profileFrameId} size="md" />
+              <span className="min-w-0 flex-1 text-left">
+                <p>{authProfile ? `${authProfile.rank} player` : "Guest player"}</p>
+                <strong>{account?.displayName ?? username}</strong>
+                <small>{authProfile ? `@${authProfile.username}` : "Progress saved on this device"}</small>
+              </span>
+              <ChevronRight size={18} />
+            </button>
 
             <div className="home-command-heading">
               <div>

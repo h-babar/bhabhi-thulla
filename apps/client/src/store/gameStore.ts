@@ -1,4 +1,5 @@
 import type {
+  AccountType,
   BasicResponse,
   BotDifficulty,
   ChatMessage,
@@ -72,6 +73,10 @@ interface GameStore {
   screen: Screen;
   username: string;
   avatar: string;
+  accountType: Exclude<AccountType, "bot">;
+  identityId?: string;
+  authToken?: string;
+  rankBadge?: string;
   sessionId?: string;
   playerId?: string;
   roomCode?: string;
@@ -92,6 +97,14 @@ interface GameStore {
   connect: () => void;
   refreshRooms: () => void;
   updateProfile: (profile: { username?: string; avatar?: string }) => void;
+  syncIdentity: (identity: {
+    username: string;
+    avatar: string;
+    accountType: Exclude<AccountType, "bot">;
+    identityId: string;
+    authToken?: string;
+    rankBadge?: string;
+  }) => void;
   setTheme: (theme: ThemeMode) => void;
   setMuted: (muted: boolean) => void;
   setMusicEnabled: (enabled: boolean) => void;
@@ -330,7 +343,12 @@ export const useGameStore = create<GameStore>()(
       const profilePayload = () => ({
         username: get().username,
         avatar: get().avatar,
-        sessionId: get().sessionId
+        sessionId: get().sessionId,
+        guestId: get().accountType === "guest" ? get().identityId : undefined,
+        accountType: get().accountType,
+        authToken: get().authToken,
+        profileId: get().accountType === "registered" ? get().identityId : undefined,
+        rankBadge: get().rankBadge
       });
 
       const emitRoomAction = (
@@ -350,6 +368,7 @@ export const useGameStore = create<GameStore>()(
         screen: "home",
         username: "Guest",
         avatar: "Aero",
+        accountType: "guest",
         rooms: [],
         theme: initialTheme,
         muted: false,
@@ -381,6 +400,16 @@ export const useGameStore = create<GameStore>()(
             username: profile.username?.slice(0, 18) ?? current.username,
             avatar: profile.avatar?.slice(0, 24) ?? current.avatar
           }));
+        },
+        syncIdentity: (identity) => {
+          set({
+            username: identity.username.slice(0, 24),
+            avatar: identity.avatar.slice(0, 24),
+            accountType: identity.accountType,
+            identityId: identity.identityId,
+            authToken: identity.authToken,
+            rankBadge: identity.rankBadge
+          });
         },
         setTheme: (theme) => {
           applyThemeToDocument(theme);
@@ -636,6 +665,8 @@ export const useGameStore = create<GameStore>()(
       partialize: (state) => ({
         username: state.username,
         avatar: state.avatar,
+        accountType: state.accountType,
+        identityId: state.identityId,
         sessionId: state.sessionId,
         roomCode: state.roomCode,
         theme: state.theme,

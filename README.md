@@ -5,7 +5,8 @@ Bhabhi Thulla is a full-stack, real-time multiplayer card game built with React,
 ## Features
 
 - Private rooms with shareable room code and link
-- Guest username/avatar login with reconnect support
+- Guest player profiles plus secure Google sign-in through Firebase Authentication
+- Permanent profiles with unique usernames, XP, levels, ranks, coins, statistics, achievements, preferences, and match history
 - Real-time Socket.IO gameplay, chat, emoji reactions, spectators, timers, and room list
 - Server-authoritative Bhabhi Thulla rules engine for shuffling, dealing, validation, scoring, turns, timers, and results
 - AI bots with Easy, Normal, and Hard strategies
@@ -108,6 +109,8 @@ pnpm seed
 pnpm dev
 ```
 
+Without Firebase variables, the complete guest flow remains available and Google sign-in reports that configuration is required.
+
 Local URLs:
 
 - Frontend: `http://localhost:5173`
@@ -131,9 +134,48 @@ PORT=4000
 SQLITE_PATH=./data/bhabhi-thulla.sqlite
 SEED_DEMO=true
 VITE_API_URL=http://localhost:4000
+VITE_FIREBASE_API_KEY=your_public_web_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_APP_ID=your_public_web_app_id
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_public_sender_id
+FIREBASE_PROJECT_ID=your-project-id
 ```
 
 The default local config still works if `SQLITE_PATH` is omitted.
+
+## Google Authentication
+
+1. Create or select a project in the [Firebase console](https://console.firebase.google.com/).
+2. Open **Authentication > Sign-in method** and enable the Google provider.
+3. Add a Web app in **Project settings > General** and copy its public configuration values into the `VITE_FIREBASE_*` variables. These values identify the Firebase project and are safe for browser use.
+4. Add `localhost` and the production Vercel domain to **Authentication > Settings > Authorized domains**. Local development uses `http://localhost:5173`; production uses `https://bhabhi-thulla-alpha.vercel.app`.
+5. Set the backend-only `FIREBASE_PROJECT_ID`. Token verification uses Firebase's public signing certificates, so no long-lived service-account private key is required.
+6. Restart the client and server after changing environment variables.
+
+The browser completes the official Firebase Google popup flow on desktop and redirect flow on mobile. It sends the resulting Firebase ID token over HTTPS to the API. The API verifies the token with Firebase Admin before reading or changing a profile. The server never stores raw Google OAuth access tokens.
+
+### Guest upgrade
+
+Guest identity and progress use `bhabhi-thulla-player-auth` in localStorage. **Save progress with Google** asks for confirmation, signs the player in, and merges eligible local stats, coins, achievements, and preferences once. The `guest_merges` database table makes the transfer idempotent so refreshing or retrying cannot duplicate rewards.
+
+### Profile database migrations
+
+Database migrations run automatically when the API starts. The SQLite schema includes `users`, `player_stats`, `player_preferences`, `achievements`, `user_achievements`, `match_history`, and `guest_merges`. To run against a new local database:
+
+```bash
+SQLITE_PATH=./data/bhabhi-thulla.sqlite pnpm --filter @getaway-cards/server start
+```
+
+For production account persistence, the backend must use durable SQLite storage or PostgreSQL. Render's `/tmp` filesystem is suitable only for demonstrations and is erased when the instance restarts.
+
+### Authentication testing
+
+1. Remove `bhabhi-thulla-player-auth` from browser storage to test first entry.
+2. Choose **Play as Guest**, refresh, and confirm the same name/avatar return.
+3. Choose **Save progress with Google**, complete the official OAuth screen, and confirm the merged profile appears.
+4. Log out, sign in on another browser, and confirm the same username, statistics, and customisation return.
+5. Run `pnpm test`, `pnpm typecheck`, and `pnpm build` before deployment.
 
 ## Deployment
 
@@ -148,6 +190,7 @@ Frontend on Vercel:
 1. Deploy the repository root.
 2. Use the included `vercel.json`.
 3. Set `VITE_API_URL` to the deployed backend URL.
+4. Set all public `VITE_FIREBASE_*` values from the Firebase Web app.
 
 Backend on Render:
 
@@ -155,6 +198,7 @@ Backend on Render:
 2. Set `CLIENT_ORIGIN` to the Vercel frontend URL.
 3. The included free-service blueprint stores SQLite at `/tmp/bhabhi-thulla.sqlite`. Free instances lose local data when they restart or spin down.
 4. For durable production history, upgrade the service, attach a persistent disk, and set `SQLITE_PATH=/var/data/bhabhi-thulla.sqlite`.
+5. Set the backend-only `FIREBASE_PROJECT_ID` value.
 
 Backend on Railway:
 

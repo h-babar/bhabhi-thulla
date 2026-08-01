@@ -12,6 +12,8 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import { config } from "./config.js";
 import { GameDatabase } from "./db.js";
+import { createProfileRouter } from "./profileRoutes.js";
+import { trustedPlayerPayload } from "./auth.js";
 import { RoomManager, normalizeRoomCode } from "./roomManager.js";
 
 const app = express();
@@ -68,6 +70,8 @@ app.get("/api/history", (_request, response) => {
   response.json({ history: db.listRecentHistory(24) });
 });
 
+app.use("/api", createProfileRouter(db));
+
 io.on("connection", (socket) => {
   const withGameError = <T extends { ok: boolean; error?: string }>(response: T): T => {
     if (!response.ok) {
@@ -76,61 +80,55 @@ io.on("connection", (socket) => {
     return response;
   };
 
-  socket.on("room:create", (payload, ack) => {
-    const result = roomManager.createRoom(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(result);
-    emitRoomList();
+  socket.on("room:create", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.createRoom({ ...payload, ...trusted }));
   });
 
-  socket.on("room:quickPlay", (payload, ack) => {
-    const result = roomManager.quickPlay(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(result);
-    emitRoomList();
+  socket.on("room:quickPlay", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.quickPlay({ ...payload, ...trusted }));
   });
 
-  socket.on("room:playWithBots", (payload, ack) => {
-    const result = roomManager.playWithBots(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(result);
-    emitRoomList();
+  socket.on("room:playWithBots", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.playWithBots({ ...payload, ...trusted }));
   });
 
-  socket.on("room:startTournament", (payload, ack) => {
-    const result = roomManager.startTournament(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(result);
-    emitRoomList();
+  socket.on("room:startTournament", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.startTournament({ ...payload, ...trusted }));
   });
 
-  socket.on("room:join", (payload, ack) => {
-    const result = roomManager.joinRoom(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(result);
-    emitRoomList();
+  socket.on("room:join", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.joinRoom({ ...payload, ...trusted }));
   });
 
-  socket.on("createRoom", (payload, ack) => {
-    const result = roomManager.createRoom(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(withGameError(result));
-    emitRoomList();
+  socket.on("createRoom", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.createRoom({ ...payload, ...trusted }), true);
   });
 
-  socket.on("joinRoom", (payload, ack) => {
-    const result = roomManager.joinRoom(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(withGameError(result));
-    emitRoomList();
+  socket.on("joinRoom", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.joinRoom({ ...payload, ...trusted }), true);
   });
 
-  socket.on("reconnectPlayer", (payload, ack) => {
-    const result = roomManager.joinRoom(payload);
-    attachIfJoined(socket.id, result.roomCode, result.playerId);
-    ack(withGameError(result));
-    emitRoomList();
+  socket.on("reconnectPlayer", async (payload, ack) => {
+    await handlePlayerEntry(payload, ack, (trusted) => roomManager.joinRoom({ ...payload, ...trusted }), true);
   });
+
+  async function handlePlayerEntry(
+    payload: Parameters<typeof trustedPlayerPayload>[1],
+    ack: (response: ReturnType<RoomManager["createRoom"]>) => void,
+    action: (trusted: Awaited<ReturnType<typeof trustedPlayerPayload>>) => ReturnType<RoomManager["createRoom"]>,
+    legacy = false
+  ): Promise<void> {
+    try {
+      const trusted = await trustedPlayerPayload(db, payload);
+      const result = action(trusted);
+      attachIfJoined(socket.id, result.roomCode, result.playerId);
+      ack(legacy ? withGameError(result) : result);
+      emitRoomList();
+    } catch (error) {
+      const result = { ok: false, error: error instanceof Error ? error.message : "Could not verify player identity." };
+      ack(legacy ? withGameError(result) : result);
+    }
+  }
 
   socket.on("room:list", (ack) => {
     ack(roomManager.listRooms());

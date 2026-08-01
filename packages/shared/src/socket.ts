@@ -10,11 +10,18 @@ import type {
   RoomListItem,
   Suit
 } from "./types.js";
+import type { AccountType } from "./profile.js";
 
 export interface PlayerProfilePayload {
   username: string;
   avatar: string;
   sessionId?: string;
+  guestId?: string;
+  accountType?: Exclude<AccountType, "bot">;
+  authToken?: string;
+  profileId?: string;
+  rankBadge?: string;
+  identityId?: string;
 }
 
 export interface CreateRoomPayload extends PlayerProfilePayload {

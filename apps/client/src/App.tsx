@@ -6,6 +6,8 @@ import { HomeScreen } from "./components/HomeScreen.js";
 import { TournamentsPage } from "./components/engagement/TournamentsPage.js";
 import { installMusicUnlock } from "./lib/music.js";
 import { useGameStore } from "./store/gameStore.js";
+import { useAuthStore } from "./store/authStore.js";
+import type { CardStyle, TableTheme } from "./store/gameStore.js";
 
 export function App() {
   const connect = useGameStore((store) => store.connect);
@@ -14,6 +16,15 @@ export function App() {
   const state = useGameStore((store) => store.state);
   const error = useGameStore((store) => store.error);
   const clearError = useGameStore((store) => store.clearError);
+  const syncIdentity = useGameStore((store) => store.syncIdentity);
+  const setTableTheme = useGameStore((store) => store.setTableTheme);
+  const setCardStyle = useGameStore((store) => store.setCardStyle);
+  const setMuted = useGameStore((store) => store.setMuted);
+  const setMusicEnabled = useGameStore((store) => store.setMusicEnabled);
+  const authStatus = useAuthStore((store) => store.status);
+  const guest = useAuthStore((store) => store.guest);
+  const profile = useAuthStore((store) => store.profile);
+  const idToken = useAuthStore((store) => store.idToken);
 
   const initialRoomCode = useMemo(() => {
     if (typeof window === "undefined") {
@@ -26,8 +37,34 @@ export function App() {
   useEffect(() => {
     hydrateTheme();
     installMusicUnlock();
-    connect();
-  }, [connect, hydrateTheme]);
+  }, [hydrateTheme]);
+
+  useEffect(() => {
+    if (authStatus === "guest" && guest) {
+      syncIdentity({
+        username: guest.displayName,
+        avatar: guest.avatarId,
+        accountType: "guest",
+        identityId: guest.id
+      });
+      connect();
+    }
+    if (authStatus === "registered" && profile && idToken) {
+      syncIdentity({
+        username: profile.displayName,
+        avatar: profile.avatarId,
+        accountType: "registered",
+        identityId: profile.id,
+        authToken: idToken,
+        rankBadge: profile.rank
+      });
+      setTableTheme(profile.preferences.tableTheme as TableTheme);
+      setCardStyle(profile.preferences.cardBack as CardStyle);
+      setMuted(!profile.preferences.soundEnabled);
+      setMusicEnabled(profile.preferences.musicEnabled);
+      connect();
+    }
+  }, [authStatus, connect, guest, idToken, profile, setCardStyle, setMusicEnabled, setMuted, setTableTheme, syncIdentity]);
 
   return (
     <>

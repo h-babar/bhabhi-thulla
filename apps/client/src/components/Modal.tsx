@@ -7,9 +7,10 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  wide?: boolean;
 }
 
-export function Modal({ open, title, children, onClose }: ModalProps) {
+export function Modal({ open, title, children, onClose, wide = false }: ModalProps) {
   return (
     <AnimatePresence>
       {open ? (
@@ -24,7 +25,7 @@ export function Modal({ open, title, children, onClose }: ModalProps) {
             aria-modal="true"
             role="dialog"
             aria-label={title}
-            className="glass-panel max-h-[86vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] p-5 sm:p-7"
+            className={`glass-panel max-h-[90vh] w-full overflow-y-auto rounded-[2rem] p-5 sm:p-7 ${wide ? "max-w-5xl" : "max-w-2xl"}`}
             initial={{ y: 24, scale: 0.96, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 12, scale: 0.97, opacity: 0 }}

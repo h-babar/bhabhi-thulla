@@ -50,6 +50,7 @@ export function PlayerBadge({ player, active = false, host = false, compact = fa
       <div className="player-info-stack min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <p className="player-name-line truncate text-sm font-black text-white">{player.username}</p>
+          {player.rankBadge ? <span className="player-rank-chip">{player.rankBadge}</span> : null}
           {host ? <Crown className="text-amber-200" size={14} /> : null}
           {player.isBot ? <Bot className="text-teal-100" size={14} /> : null}
         </div>

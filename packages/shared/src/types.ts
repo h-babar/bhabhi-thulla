@@ -23,6 +23,8 @@ export type FunMode = "classic" | "turbo" | "marathon" | "reverse";
 
 export type RoomMode = "private" | "quick" | "bots" | "tournament";
 
+import type { AccountType } from "./profile.js";
+
 export type TournamentStatus = "active" | "won" | "eliminated";
 
 export type TournamentStageId = "group_stage" | "quarter_final" | "semi_final" | "final";
@@ -57,6 +59,9 @@ export interface NewPlayerInput {
   avatar: string;
   isBot?: boolean;
   botDifficulty?: BotDifficulty;
+  accountType?: AccountType;
+  profileId?: string;
+  rankBadge?: string;
 }
 
 export interface PlayerState {
@@ -71,6 +76,9 @@ export interface PlayerState {
   ready: boolean;
   isBot: boolean;
   botDifficulty?: BotDifficulty;
+  accountType: AccountType;
+  profileId?: string;
+  rankBadge?: string;
   missedTurnStreak?: number;
   joinedAt: number;
   lastSeenAt: number;
@@ -255,7 +263,7 @@ export interface TournamentState {
 }
 
 export interface PublicPlayerState
-  extends Omit<PlayerState, "hand" | "sessionId"> {
+  extends Omit<PlayerState, "hand" | "sessionId" | "profileId"> {
   handCount: number;
   hand?: Card[];
   isYou: boolean;

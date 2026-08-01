@@ -13,6 +13,7 @@
   "dependencies": {
     "@getaway-cards/shared": "workspace:*",
     "clsx": "^2.1.1",
+    "firebase": "^12.17.0",
     "framer-motion": "^12.18.1",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",

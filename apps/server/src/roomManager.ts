@@ -124,10 +124,13 @@ export class RoomManager {
     const now = Date.now();
     const sessionId = payload.sessionId ?? randomUUID();
     const player = createPlayer({
-      id: randomUUID(),
+      id: payload.identityId ?? randomUUID(),
       sessionId,
       username: payload.username,
-      avatar: payload.avatar
+      avatar: payload.avatar,
+      accountType: payload.accountType,
+      profileId: payload.profileId,
+      rankBadge: payload.rankBadge
     }, now);
     const roomCode = this.generateUniqueRoomCode();
     const state = createGameState(roomCode, player, payload.settings, now);
@@ -202,10 +205,13 @@ export class RoomManager {
     const nation = findTournamentNation(payload.nationCode) ?? NATION_OPTIONS[0]!;
     const sessionId = payload.sessionId ?? randomUUID();
     const player = createPlayer({
-      id: randomUUID(),
+      id: payload.identityId ?? randomUUID(),
       sessionId,
       username: payload.username,
-      avatar: payload.avatar
+      avatar: payload.avatar,
+      accountType: payload.accountType,
+      profileId: payload.profileId,
+      rankBadge: payload.rankBadge
     }, now);
     const roomCode = this.generateUniqueRoomCode();
     const state = createGameState(roomCode, player, {
@@ -245,16 +251,22 @@ export class RoomManager {
     const requestedSessionId = payload.sessionId;
     const existingPlayer = requestedSessionId
       ? room.state.players.find((player) => player.sessionId === requestedSessionId)
-      : undefined;
+      : payload.profileId
+        ? room.state.players.find((player) => player.profileId === payload.profileId)
+        : undefined;
     const existingSpectator = requestedSessionId
       ? room.state.spectators.find((spectator) => spectator.sessionId === requestedSessionId)
       : undefined;
 
     if (existingPlayer) {
+      if (existingPlayer.accountType === "registered" && existingPlayer.profileId !== payload.profileId) {
+        return { ok: false, error: "Sign in to the original account to reclaim this seat." };
+      }
       existingPlayer.connected = true;
       existingPlayer.lastSeenAt = now;
-      existingPlayer.username = payload.username.trim().slice(0, 18) || existingPlayer.username;
+      existingPlayer.username = payload.username.trim().slice(0, 24) || existingPlayer.username;
       existingPlayer.avatar = payload.avatar.trim().slice(0, 24) || existingPlayer.avatar;
+      existingPlayer.rankBadge = payload.rankBadge ?? existingPlayer.rankBadge;
       room.state.updatedAt = now;
       this.commitExisting(roomCode);
       return this.joinResponse(roomCode, existingPlayer.id, existingPlayer.sessionId);
@@ -309,10 +321,13 @@ export class RoomManager {
     }
 
     const player = createPlayer({
-      id: randomUUID(),
+      id: payload.identityId ?? randomUUID(),
       sessionId,
       username: payload.username,
-      avatar: payload.avatar
+      avatar: payload.avatar,
+      accountType: payload.accountType,
+      profileId: payload.profileId,
+      rankBadge: payload.rankBadge
     }, now);
     room.state.players.push(player);
     this.pushEvent(room.state, "join", `${player.username} joined the room.`, player.id, now);

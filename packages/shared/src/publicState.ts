@@ -4,7 +4,7 @@ export function toPublicGameState(state: GameState, viewerId?: string): PublicGa
   const { deck, players, spectators, ...rest } = state;
 
   const publicPlayers: PublicPlayerState[] = players.map((player) => {
-    const { hand, sessionId: _sessionId, ...safePlayer } = player;
+    const { hand, sessionId: _sessionId, profileId: _profileId, ...safePlayer } = player;
     const isYou = player.id === viewerId;
     return {
       ...safePlayer,
