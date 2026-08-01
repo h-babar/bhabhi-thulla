@@ -13662,3 +13662,66 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   .settings-close-action,
   .settings-save-action { width: 100%; min-width: 0; padding-inline: 0.7rem; }
 }
+
+/* Light game surfaces: remove dark-mode residue without flattening the table. */
+:root:not(.dark) .home-profile-row {
+  border-color: rgba(32, 102, 75, 0.18);
+  background: linear-gradient(100deg, #edf8f3, #f8fbf9);
+  color: #18382c;
+  box-shadow: inset 0 1px white, 0 0.55rem 1.25rem rgba(29, 82, 61, 0.07);
+}
+
+:root:not(.dark) .home-profile-row:hover {
+  border-color: rgba(24, 158, 106, 0.34);
+  background: #e8f7ef;
+}
+
+:root:not(.dark) .home-profile-row p { color: #8a681f !important; }
+:root:not(.dark) .home-profile-row strong { color: #173a2d !important; }
+:root:not(.dark) .home-profile-row small { color: #647b72 !important; }
+:root:not(.dark) .home-profile-row > svg { color: #527267; }
+
+:root:not(.dark):has(.game-table-main),
+:root:not(.dark) body:has(.game-table-main),
+:root:not(.dark) #root:has(.game-table-main) {
+  background: #eaf2ee !important;
+}
+
+:root:not(.dark) .dealer-overlay-lifetime {
+  border-radius: var(--layout-radius, 50% / 42%);
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+:root:not(.dark) .active-hand-dock > .grid {
+  border-color: rgba(33, 111, 81, 0.2) !important;
+  background: rgba(247, 251, 249, 0.92) !important;
+  color: #28483c !important;
+  box-shadow: 0 0.8rem 2.1rem rgba(29, 76, 59, 0.1), inset 0 1px white;
+  backdrop-filter: blur(10px) saturate(1.05);
+}
+
+:root:not(.dark) .play-table-shell {
+  box-shadow:
+    0 0.6rem 0 rgba(49, 33, 22, 0.32),
+    0 1.8rem 4rem rgba(28, 63, 49, 0.22),
+    0 0 2.8rem color-mix(in srgb, var(--table-rim-glow), transparent 82%),
+    inset 0 0 0 0.16rem rgba(255, 255, 255, 0.08),
+    inset 0 1.2rem 2.4rem rgba(255, 255, 255, 0.09),
+    inset 0 -2.2rem 3.8rem rgba(0, 0, 0, 0.4) !important;
+}
+
+/* A tighter fan keeps large hands fully readable without crowding the table. */
+.active-hand-dock .hand-fan .card-face,
+.active-hand-dock .hand-scroll .card-face {
+  width: clamp(3.8rem, 4.2vw, 5rem) !important;
+  margin-left: clamp(-0.98rem, -0.78vw, -0.5rem) !important;
+}
+
+@media (max-width: 767px) {
+  .active-hand-dock .hand-fan .card-face,
+  .active-hand-dock .hand-scroll .card-face {
+    width: clamp(2.95rem, 12.3vw, 3.5rem) !important;
+    margin-left: -0.66rem !important;
+  }
+}
