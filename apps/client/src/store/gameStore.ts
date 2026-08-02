@@ -10,6 +10,7 @@ import type {
   ReactionMessage,
   RoomJoinResponse,
   RoomListItem,
+  RoomVisibility,
   ServerToClientEvents,
   Suit
 } from "@getaway-cards/shared";
@@ -114,7 +115,7 @@ interface GameStore {
   setTableLayout: (layout: TableLayout) => void;
   setWeatherTheme: (theme: WeatherTheme) => void;
   hydrateTheme: () => void;
-  createRoom: (settings?: Partial<GameSettings>) => void;
+  createRoom: (settings?: Partial<GameSettings>, visibility?: RoomVisibility) => void;
   joinRoom: (roomCode: string, asSpectator?: boolean) => void;
   quickPlay: (difficulty?: BotDifficulty, settings?: Partial<GameSettings>) => void;
   playWithBots: (difficulty: BotDifficulty, botCount: number, settings?: Partial<GameSettings>) => void;
@@ -460,13 +461,14 @@ export const useGameStore = create<GameStore>()(
             set({ musicVolume: 0.34 });
           }
         },
-        createRoom: (settings) => {
+        createRoom: (settings, visibility = "private") => {
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "createRoom",
             {
               ...profilePayload(),
-              settings
+              settings,
+              visibility
             },
             handleJoinResponse
           );

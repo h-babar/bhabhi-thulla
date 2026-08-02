@@ -1,6 +1,7 @@
 import type { PublicPlayerState } from "@getaway-cards/shared";
 import clsx from "clsx";
 import { Bot, Crown, WifiOff } from "lucide-react";
+import { playerInitials } from "../lib/playerInitials.js";
 
 interface PlayerBadgeProps {
   player: PublicPlayerState;
@@ -39,7 +40,7 @@ export function PlayerBadge({ player, active = false, host = false, compact = fa
       )}
     >
       <div className="player-avatar-token relative grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-teal-300 to-amber-200 text-sm font-black text-slate-950 shadow-sm">
-        {player.avatar.slice(0, 2).toUpperCase()}
+        {playerInitials(player.username)}
         <span className="player-count-bubble">{player.handCount}</span>
         {!player.connected ? (
           <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-rose-500 text-white">

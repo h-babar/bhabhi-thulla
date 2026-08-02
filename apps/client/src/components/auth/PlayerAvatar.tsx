@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import { playerInitials } from "../../lib/playerInitials.js";
 
 interface PlayerAvatarProps {
   name: string;
@@ -10,11 +11,15 @@ interface PlayerAvatarProps {
 
 export function PlayerAvatar({ name, avatarId, photoUrl, frame = "classic", size = "md" }: PlayerAvatarProps) {
   return (
-    <span className={clsx("profile-avatar", `profile-avatar-${size}`, `profile-frame-${frame}`)} aria-label={`${name} avatar`}>
+    <span
+      className={clsx("profile-avatar", `profile-avatar-${size}`, `profile-frame-${frame}`)}
+      aria-label={`${name} avatar`}
+      data-avatar-id={avatarId}
+    >
       {photoUrl ? (
         <img src={photoUrl} alt="" referrerPolicy="no-referrer" />
       ) : (
-        <span>{avatarId.slice(0, 2).toUpperCase()}</span>
+        <span>{playerInitials(name)}</span>
       )}
     </span>
   );

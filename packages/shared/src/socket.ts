@@ -8,6 +8,7 @@ import type {
   ReactionMessage,
   ChatMessage,
   RoomListItem,
+  RoomVisibility,
   Suit
 } from "./types.js";
 import type { AccountType } from "./profile.js";
@@ -26,6 +27,7 @@ export interface PlayerProfilePayload {
 
 export interface CreateRoomPayload extends PlayerProfilePayload {
   settings?: Partial<GameSettings>;
+  visibility?: RoomVisibility;
 }
 
 export interface JoinRoomPayload extends PlayerProfilePayload {

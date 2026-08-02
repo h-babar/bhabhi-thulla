@@ -1,4 +1,11 @@
-import { NATION_OPTIONS, type BotDifficulty, type Card, type FunMode, type TournamentNation } from "@getaway-cards/shared";
+import {
+  NATION_OPTIONS,
+  type BotDifficulty,
+  type Card,
+  type FunMode,
+  type RoomVisibility,
+  type TournamentNation
+} from "@getaway-cards/shared";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
@@ -9,6 +16,8 @@ import {
   Gamepad2,
   GraduationCap,
   Gift,
+  Globe2,
+  LockKeyhole,
   LogIn,
   Medal,
   Play,
@@ -72,6 +81,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
   const [targetScore, setTargetScore] = useState(5);
   const [turnSeconds, setTurnSeconds] = useState(20);
   const [funMode, setFunMode] = useState<FunMode>("classic");
+  const [roomVisibility, setRoomVisibility] = useState<RoomVisibility>("private");
   const authGuest = useAuthStore((store) => store.guest);
   const authProfile = useAuthStore((store) => store.profile);
   const openProfile = useAuthStore((store) => store.openProfile);
@@ -232,7 +242,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
 
             <div className="home-command-heading">
               <div>
-                <p>Private table</p>
+                <p>{roomVisibility === "private" ? "Private table" : "Public table"}</p>
                 <h3>Join your friends</h3>
               </div>
               <LogIn size={21} />
@@ -252,7 +262,10 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
             </div>
             <div className="home-private-actions">
               <button
-                onClick={() => createRoom({ targetScore, turnSeconds, funMode, maxPlayers: 6 })}
+                onClick={() => createRoom(
+                  { targetScore, turnSeconds, funMode, maxPlayers: 6 },
+                  roomVisibility
+                )}
               >
                 <Plus size={17} /> Create room
               </button>
@@ -264,6 +277,24 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
                 />
                 Spectator
               </label>
+            </div>
+            <div className="home-room-privacy" role="group" aria-label="Room visibility">
+              <button
+                className={roomVisibility === "private" ? "is-active" : undefined}
+                onClick={() => setRoomVisibility("private")}
+                type="button"
+              >
+                <LockKeyhole size={16} />
+                <span><strong>Private</strong><small>Code only</small></span>
+              </button>
+              <button
+                className={roomVisibility === "public" ? "is-active" : undefined}
+                onClick={() => setRoomVisibility("public")}
+                type="button"
+              >
+                <Globe2 size={16} />
+                <span><strong>Public</strong><small>Listed live</small></span>
+              </button>
             </div>
 
             <div className="home-command-divider"><span>or challenge AI</span></div>

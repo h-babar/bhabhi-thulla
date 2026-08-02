@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { stopBackgroundMusic, updateBackgroundMusic, type MusicPhase } from "../lib/music.js";
+import { playerInitials } from "../lib/playerInitials.js";
 import { playSound } from "../lib/sound.js";
 import { useGameStore } from "../store/gameStore.js";
 import { CardView } from "./CardView.js";
@@ -78,11 +79,20 @@ export function GameTable() {
   const [tablePhrase, setTablePhrase] = useState<{ id: number; text: string; tone: "good" | "warn" | "rush" }>();
   const [activeTableTool, setActiveTableTool] = useState<ActiveTableTool>("none");
   const [handSortMode, setHandSortMode] = useState<HandSortMode>("deal");
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth
+  );
   const lastPhrasePlayRef = useRef<string | undefined>(undefined);
   const lastPhraseTrickRef = useRef<string | undefined>(undefined);
   const hurryTurnRef = useRef<string | undefined>(undefined);
   const lastPlayedSoundRef = useRef<string | undefined>(undefined);
   const lastTurnSoundRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", updateViewportWidth, { passive: true });
+    return () => window.removeEventListener("resize", updateViewportWidth);
+  }, []);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -161,6 +171,7 @@ export function GameTable() {
     !isTableRevealPhase;
   const hand = me?.hand ?? [];
   const displayedHand = useMemo(() => sortHandForDisplay(hand, handSortMode), [hand, handSortMode]);
+  const responsiveHandStyle = getResponsiveHandStyle(displayedHand.length, viewportWidth);
   const activePlayer = state.players.find((player) => player.id === state.activePlayerId);
   const nextCardTakeTarget =
     isMyTurn &&
@@ -490,7 +501,10 @@ export function GameTable() {
                   Cards are being dealt. Your hand opens when the dealer leaves.
                 </div>
               ) : (
-                <div className="hand-scroll hand-fan flex min-h-[5.75rem] gap-1.5 overflow-x-auto pb-1.5 pt-2 sm:min-h-[6.35rem] sm:gap-2">
+                <div
+                  className="hand-scroll hand-fan flex min-h-[5.75rem] gap-1.5 overflow-x-auto pb-1.5 pt-2 sm:min-h-[6.35rem] sm:gap-2"
+                  style={responsiveHandStyle}
+                >
                   {displayedHand.map((card, index) => (
                     <CardView
                       key={card.id}
@@ -785,7 +799,7 @@ function SeatIdentity({
         <p className="seat-player-status">{statusText}</p>
       </div>
       <div className="seat-avatar-token">
-        {player.avatar.slice(0, 2).toUpperCase()}
+        {playerInitials(player.username)}
         <span className="seat-count-bubble">{player.handCount}</span>
         {!player.connected ? (
           <span className="seat-offline-dot">
@@ -1570,13 +1584,28 @@ function HandStatusActions({
 }
 
 function ReactionBurst({ state }: { state: PublicGameState }) {
+  const [reactionClock, setReactionClock] = useState(Date.now());
+
+  useEffect(() => {
+    if (!state.reactions.some((reaction) => Date.now() - reaction.at < 2000)) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => setReactionClock(Date.now()), 100);
+    return () => window.clearInterval(interval);
+  }, [state.reactions]);
+
+  const visibleReactions = state.reactions
+    .filter((reaction) => reactionClock - reaction.at < 2000)
+    .slice(0, 5);
+
   return (
     <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
       <AnimatePresence>
-        {state.reactions.slice(0, 5).map((reaction, index) => (
+        {visibleReactions.map((reaction, index) => (
           <motion.div
             key={reaction.id}
-            className="absolute rounded-full bg-white/20 px-3 py-2 text-2xl shadow-card backdrop-blur"
+            className="table-reaction-burst absolute rounded-full bg-white/20 px-3 py-2 text-2xl shadow-card backdrop-blur"
             style={{
               left: `${18 + index * 14}%`,
               top: `${20 + (index % 3) * 18}%`
@@ -1584,7 +1613,7 @@ function ReactionBurst({ state }: { state: PublicGameState }) {
             initial={{ y: 30, scale: 0.7, opacity: 0 }}
             animate={{ y: -25, scale: 1, opacity: 1 }}
             exit={{ opacity: 0, y: -60 }}
-            transition={{ duration: 1.6 }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
           >
             {reaction.emoji}
           </motion.div>
@@ -2101,14 +2130,19 @@ function ordinal(value: number): string {
   return `${value}${suffix}`;
 }
 
-function playerInitials(name: string): string {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
+function getResponsiveHandStyle(cardCount: number, viewportWidth: number): CSSProperties {
+  if (viewportWidth > 767 || cardCount <= 0) {
+    return {};
   }
 
-  return (parts[0] ?? name).slice(0, 2).toUpperCase();
+  const availableWidth = Math.max(220, viewportWidth - 48);
+  const cardWidth = Math.min(52, Math.max(40, viewportWidth * 0.125));
+  const visibleStep = cardCount === 1
+    ? cardWidth
+    : Math.min(cardWidth * 0.82, (availableWidth - cardWidth) / (cardCount - 1));
+
+  return {
+    "--mobile-hand-card-width": `${cardWidth}px`,
+    "--mobile-hand-card-overlap": `${visibleStep - cardWidth}px`
+  } as CSSProperties;
 }

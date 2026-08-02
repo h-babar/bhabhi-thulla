@@ -23,6 +23,8 @@ export type FunMode = "classic" | "turbo" | "marathon" | "reverse";
 
 export type RoomMode = "private" | "quick" | "bots" | "tournament";
 
+export type RoomVisibility = "private" | "public";
+
 import type { AccountType } from "./profile.js";
 
 export type TournamentStatus = "active" | "won" | "eliminated";

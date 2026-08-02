@@ -30,6 +30,7 @@ import {
   type RoomClosedPayload,
   type RoomJoinResponse,
   type RoomListItem,
+  type RoomVisibility,
   type SettingsPayload,
   type StartTournamentPayload,
   type TournamentNation,
@@ -41,6 +42,7 @@ import type { GameDatabase } from "./db.js";
 
 interface ManagedRoom {
   state: GameState;
+  visibility: RoomVisibility;
   botTimer?: ReturnType<typeof setTimeout>;
   celebrationTimer?: ReturnType<typeof setTimeout>;
   cleanupAt?: number;
@@ -135,7 +137,10 @@ export class RoomManager {
     const roomCode = this.generateUniqueRoomCode();
     const state = createGameState(roomCode, player, payload.settings, now);
 
-    this.rooms.set(roomCode, { state });
+    this.rooms.set(roomCode, {
+      state,
+      visibility: payload.visibility === "public" ? "public" : "private"
+    });
     this.commitExisting(roomCode);
 
     return this.joinResponse(roomCode, player.id, sessionId);
@@ -230,7 +235,7 @@ export class RoomManager {
     });
     this.prepareTournamentStage(state, now);
 
-    this.rooms.set(roomCode, { state });
+    this.rooms.set(roomCode, { state, visibility: "private" });
     if (payload.offline) {
       this.commitState(roomCode, startRound(state));
     } else {
@@ -407,7 +412,8 @@ export class RoomManager {
 
   listRooms(): RoomListItem[] {
     return [...this.rooms.values()]
-      .filter(({ state }) =>
+      .filter(({ state, visibility }) =>
+        visibility === "public" &&
         state.status !== "game_over" &&
         (state.players.some((player) => !player.isBot && player.connected) ||
           state.spectators.some((spectator) => spectator.connected))

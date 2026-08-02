@@ -13725,3 +13725,172 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     margin-left: -0.66rem !important;
   }
 }
+
+/* Room visibility and final responsive-hand geometry. */
+.home-room-privacy {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  padding: 0.28rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.85rem;
+  background: rgba(2, 8, 17, 0.34);
+}
+
+.home-room-privacy button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.66rem;
+  padding: 0.55rem 0.65rem;
+  color: rgba(226, 232, 240, 0.7);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.home-room-privacy button:hover {
+  transform: translateY(-1px);
+  color: white;
+}
+
+.home-room-privacy button.is-active {
+  border-color: rgba(94, 234, 212, 0.42);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(16, 185, 129, 0.1));
+  color: #ccfbf1;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 0.6rem 1.4rem rgba(5, 150, 105, 0.12);
+}
+
+.home-room-privacy button span {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+
+.home-room-privacy button strong {
+  font-size: 0.73rem;
+  line-height: 1.05;
+}
+
+.home-room-privacy button small {
+  margin-top: 0.14rem;
+  font-size: 0.58rem;
+  font-weight: 750;
+  color: currentColor;
+  opacity: 0.68;
+}
+
+:root:not(.dark) .home-room-privacy {
+  border-color: rgba(59, 94, 81, 0.18);
+  background: rgba(230, 242, 237, 0.8);
+}
+
+:root:not(.dark) .home-room-privacy button {
+  color: #5c746b;
+}
+
+:root:not(.dark) .home-room-privacy button.is-active {
+  border-color: rgba(20, 143, 112, 0.35);
+  background: linear-gradient(135deg, rgba(185, 235, 216, 0.92), rgba(224, 244, 234, 0.94));
+  color: #0e5b45;
+}
+
+.active-hand-dock .hand-fan .card-face,
+.active-hand-dock .hand-scroll .card-face {
+  width: clamp(3.65rem, 3.9vw, 4.65rem) !important;
+  margin-left: clamp(-1.25rem, -0.96vw, -0.7rem) !important;
+}
+
+@media (max-width: 767px) {
+  .game-table-main {
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100svh !important;
+    overflow: hidden !important;
+    padding-inline: 0.25rem !important;
+  }
+
+  .game-table-main .play-surface,
+  .game-table-main .game-play-column {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .play-table-shell,
+  .play-table-shell.table-layout-grand,
+  .play-table-shell.table-layout-stadium,
+  .play-table-shell.table-layout-classic,
+  .play-table-shell.table-layout-compact,
+  .play-table-shell.table-layout-lounge,
+  .play-table-shell.table-layout-arena {
+    --layout-width: calc(100vw - 0.5rem);
+    --layout-height: calc(100dvh - 5.15rem);
+    width: var(--layout-width) !important;
+    max-width: var(--layout-width) !important;
+    height: var(--layout-height) !important;
+    min-height: var(--layout-height) !important;
+    max-height: var(--layout-height) !important;
+    margin-top: 4.35rem !important;
+  }
+
+  .active-hand-dock.hand-tray,
+  .active-hand-dock {
+    width: calc(100vw - 0.35rem) !important;
+    height: clamp(10.9rem, 25dvh, 13.1rem) !important;
+    max-width: none !important;
+  }
+
+  .active-hand-dock .hand-scroll {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+    padding: 0.8rem 0.1rem 4.75rem !important;
+    transform: translateY(-0.2rem) !important;
+  }
+
+  .active-hand-dock .hand-fan .card-face,
+  .active-hand-dock .hand-scroll .card-face {
+    width: var(--mobile-hand-card-width, 2.8rem) !important;
+    margin-left: var(--mobile-hand-card-overlap, -1rem) !important;
+    border-radius: 0.58rem !important;
+  }
+
+  .active-hand-dock .hand-scroll .card-face:first-child {
+    margin-left: 0 !important;
+  }
+
+  .active-hand-dock .hand-tray-header {
+    bottom: 0.08rem !important;
+    max-width: calc(100vw - 0.45rem) !important;
+  }
+
+  .play-table-shell .seat-count-4 .casino-seat-1,
+  .play-table-shell .seat-count-5 .casino-seat-1,
+  .play-table-shell .seat-count-6 .casino-seat-2 {
+    left: 0.15rem !important;
+  }
+
+  .play-table-shell .seat-count-3 .casino-seat-2,
+  .play-table-shell .seat-count-4 .casino-seat-3,
+  .play-table-shell .seat-count-5 .casino-seat-4,
+  .play-table-shell .seat-count-6 .casino-seat-4 {
+    right: 0.15rem !important;
+  }
+
+  .play-table-shell .seat-count-4 .casino-seat-1 .seat-identity,
+  .play-table-shell .seat-count-4 .casino-seat-3 .seat-identity,
+  .play-table-shell .seat-count-5 .casino-seat-1 .seat-identity,
+  .play-table-shell .seat-count-5 .casino-seat-4 .seat-identity,
+  .play-table-shell .seat-count-6 .casino-seat-2 .seat-identity,
+  .play-table-shell .seat-count-6 .casino-seat-4 .seat-identity {
+    transform: scale(0.78) !important;
+  }
+}

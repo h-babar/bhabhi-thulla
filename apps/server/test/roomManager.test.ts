@@ -79,7 +79,7 @@ test("an abandoned room is hidden immediately and then deleted", async () => {
     (payload) => closed.push(payload.reason),
     { reconnectGraceMs: 20 }
   );
-  const created = manager.createRoom({ username: "Tester", avatar: "Aero" });
+  const created = manager.createRoom({ username: "Tester", avatar: "Aero", visibility: "public" });
 
   assert.equal(created.ok, true);
   manager.attachSocket("socket-1", created.roomCode!, created.playerId!);
@@ -100,7 +100,7 @@ test("rejoining within the grace window cancels room deletion", async () => {
     () => undefined,
     { reconnectGraceMs: 35 }
   );
-  const created = manager.createRoom({ username: "Tester", avatar: "Aero" });
+  const created = manager.createRoom({ username: "Tester", avatar: "Aero", visibility: "public" });
 
   manager.attachSocket("socket-1", created.roomCode!, created.playerId!);
   manager.disconnectSocket("socket-1");
@@ -124,7 +124,7 @@ test("rejoining within the grace window cancels room deletion", async () => {
 test("disconnecting an old socket keeps a player with another socket online", () => {
   const db = new FakeDatabase();
   const manager = new RoomManager(db, () => undefined);
-  const created = manager.createRoom({ username: "Tester", avatar: "Aero" });
+  const created = manager.createRoom({ username: "Tester", avatar: "Aero", visibility: "public" });
 
   manager.attachSocket("socket-old", created.roomCode!, created.playerId!);
   manager.attachSocket("socket-new", created.roomCode!, created.playerId!);
@@ -151,6 +151,34 @@ test("quick play marks the room so its compact HUD can omit round progress", asy
   manager.quitRoom(created.roomCode!, created.playerId!, false);
   await wait(25);
   assert.equal(manager.getPublicState(created.roomCode!), undefined);
+});
+
+test("only public rooms are discoverable while private rooms remain joinable by code", () => {
+  const db = new FakeDatabase();
+  const manager = new RoomManager(db, () => undefined);
+  const privateRoom = manager.createRoom({
+    username: "Private Host",
+    avatar: "Aero",
+    visibility: "private"
+  });
+  const publicRoom = manager.createRoom({
+    username: "Public Host",
+    avatar: "Aero",
+    visibility: "public"
+  });
+
+  manager.attachSocket("private-host", privateRoom.roomCode!, privateRoom.playerId!);
+  manager.attachSocket("public-host", publicRoom.roomCode!, publicRoom.playerId!);
+
+  assert.deepEqual(manager.listRooms().map((room) => room.roomCode), [publicRoom.roomCode]);
+
+  const joinedPrivateRoom = manager.joinRoom({
+    roomCode: privateRoom.roomCode!,
+    username: "Invited Player",
+    avatar: "Aero"
+  });
+  assert.equal(joinedPrivateRoom.ok, true);
+  assert.equal(joinedPrivateRoom.roomCode, privateRoom.roomCode);
 });
 
 test("a replacement spectator can reclaim their original bot seat", () => {
