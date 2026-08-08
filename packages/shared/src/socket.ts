@@ -9,7 +9,9 @@ import type {
   ChatMessage,
   RoomListItem,
   RoomVisibility,
-  Suit
+  Suit,
+  VoiceConnectionState,
+  VoiceParticipantState
 } from "./types.js";
 import type { AccountType } from "./profile.js";
 
@@ -122,6 +124,76 @@ export interface PrivateHandPayload {
   hand: Card[];
 }
 
+export interface VoiceRoomPayload {
+  roomId: string;
+}
+
+export interface VoiceTargetPayload extends VoiceRoomPayload {
+  intendedRecipientPlayerId: string;
+}
+
+export interface VoiceSessionDescription {
+  type: "offer" | "answer";
+  sdp: string;
+}
+
+export interface VoiceSessionSignalPayload extends VoiceTargetPayload {
+  description: VoiceSessionDescription;
+}
+
+export interface VoiceIceCandidateData {
+  candidate: string;
+  sdpMid: string | null;
+  sdpMLineIndex: number | null;
+  usernameFragment?: string | null;
+}
+
+export interface VoiceIceSignalPayload extends VoiceTargetPayload {
+  candidate: VoiceIceCandidateData;
+}
+
+export interface VoiceMuteStatePayload extends VoiceRoomPayload {
+  isSelfMuted: boolean;
+}
+
+export interface VoiceConnectionStatePayload extends VoiceRoomPayload {
+  connectionState: VoiceConnectionState;
+}
+
+export interface VoiceReportPayload extends VoiceTargetPayload {
+  reason: "abuse" | "harassment" | "noise" | "other";
+}
+
+export interface VoiceForwardedSessionSignal extends VoiceSessionSignalPayload {
+  senderPlayerId: string;
+}
+
+export interface VoiceForwardedIceSignal extends VoiceIceSignalPayload {
+  senderPlayerId: string;
+}
+
+export interface VoicePeerStatePayload extends VoiceRoomPayload {
+  senderPlayerId: string;
+  isSelfMuted?: boolean;
+  connectionState?: VoiceConnectionState;
+}
+
+export interface VoiceParticipantsPayload extends VoiceRoomPayload {
+  participants: VoiceParticipantState[];
+}
+
+export interface VoiceIceServer {
+  urls: string[];
+  username?: string;
+  credential?: string;
+}
+
+export interface VoiceJoinResponse extends BasicResponse {
+  participant?: VoiceParticipantState;
+  participants?: VoiceParticipantState[];
+  iceServers?: VoiceIceServer[];
+}
+
 export interface RoomClosedPayload {
   roomCode: string;
   reason: "match_complete" | "abandoned" | "empty";
@@ -135,6 +207,14 @@ export interface ServerToClientEvents {
   "room:list": (rooms: RoomListItem[]) => void;
   "chat:message": (message: ChatMessage) => void;
   "reaction:message": (reaction: ReactionMessage) => void;
+  "voice:participants": (payload: VoiceParticipantsPayload) => void;
+  "voice:peer-left": (payload: VoicePeerStatePayload) => void;
+  "voice:offer": (payload: VoiceForwardedSessionSignal) => void;
+  "voice:answer": (payload: VoiceForwardedSessionSignal) => void;
+  "voice:ice-candidate": (payload: VoiceForwardedIceSignal) => void;
+  "voice:mute-state": (payload: VoicePeerStatePayload) => void;
+  "voice:connection-state": (payload: VoicePeerStatePayload) => void;
+  "voice:error": (message: string) => void;
   roomState: (state: PublicGameState) => void;
   privateHand: (payload: PrivateHandPayload) => void;
   gameError: (message: string) => void;
@@ -156,6 +236,14 @@ export interface ClientToServerEvents {
   "game:takeNextPlayerCards": (payload: RoomActionPayload, ack: (response: BasicResponse) => void) => void;
   "chat:send": (payload: ChatPayload, ack: (response: BasicResponse) => void) => void;
   "reaction:send": (payload: ReactionPayload, ack: (response: BasicResponse) => void) => void;
+  "voice:join": (payload: VoiceRoomPayload, ack: (response: VoiceJoinResponse) => void) => void;
+  "voice:leave": (payload: VoiceRoomPayload, ack: (response: BasicResponse) => void) => void;
+  "voice:offer": (payload: VoiceSessionSignalPayload, ack: (response: BasicResponse) => void) => void;
+  "voice:answer": (payload: VoiceSessionSignalPayload, ack: (response: BasicResponse) => void) => void;
+  "voice:ice-candidate": (payload: VoiceIceSignalPayload, ack: (response: BasicResponse) => void) => void;
+  "voice:mute-state": (payload: VoiceMuteStatePayload, ack: (response: BasicResponse) => void) => void;
+  "voice:connection-state": (payload: VoiceConnectionStatePayload, ack: (response: BasicResponse) => void) => void;
+  "voice:report": (payload: VoiceReportPayload, ack: (response: BasicResponse) => void) => void;
   "settings:update": (payload: SettingsPayload, ack: (response: BasicResponse) => void) => void;
   createRoom: (payload: CreateRoomPayload, ack: (response: RoomJoinResponse) => void) => void;
   joinRoom: (payload: JoinRoomPayload, ack: (response: RoomJoinResponse) => void) => void;

@@ -8,6 +8,7 @@ Bhabhi Thulla is a full-stack, real-time multiplayer card game built with React,
 - Guest player profiles plus secure Google sign-in through Firebase Authentication
 - Permanent profiles with unique usernames, XP, levels, ranks, coins, statistics, achievements, preferences, and match history
 - Real-time Socket.IO gameplay, chat, emoji reactions, spectators, timers, and room list
+- Opt-in WebRTC voice chat for human multiplayer seats with self-mute, deafen, per-player volume/mute, speaking indicators, device controls, push-to-talk, and reconnect support
 - Server-authoritative Bhabhi Thulla rules engine for shuffling, dealing, validation, scoring, turns, timers, and results
 - AI bots with Easy, Normal, and Hard strategies
 - Tournament mode with nation selection, Group Stage, Quarter Final, Semi Final, Final, hidden future draws, and server-controlled advancement
@@ -47,6 +48,39 @@ The browser stores `sessionId` and `roomCode` in localStorage so a refresh can r
 Rooms follow a bounded lifecycle. Completed matches remain open for 12 seconds so players can see the result, then the server removes the room and its live SQLite snapshot. Rooms with no connected human players disappear from discovery immediately and are deleted after a five-minute reconnect grace period. Active tournament stages are retained so the host can advance to the next stage.
 
 Players who choose **Replace me with bot** remain at the table as spectators and can reclaim that exact seat until the match finishes. The server preserves the seat's hand, score, and turn order while validating that only its original owner can take it back.
+
+## Live Voice Chat
+
+Voice is opt-in and available only to seated human players in online multiplayer rooms. Bots, bot-only games, offline tournaments, and spectators never join voice or receive voice controls. Audio uses a peer-to-peer WebRTC mesh; Socket.IO carries validated SDP and ICE signalling only. The application server never receives, records, stores, transcribes, or analyses conversation audio.
+
+Players can mute their microphone without closing the connection, locally mute or adjust another human player's volume, mute all remote audio, see speaking/muted/disconnected states, choose input and supported output devices, enable browser noise processing, and use push-to-talk. Denied microphone permission or a voice connection failure never prevents card play.
+
+### STUN and TURN
+
+Public STUN alone is not enough for players behind restrictive carrier or corporate NAT. Configure a TURN service in the backend environment:
+
+```bash
+VOICE_STUN_URLS=stun:stun.l.google.com:19302
+VOICE_TURN_URLS=turn:turn.example.com:3478?transport=udp,turns:turn.example.com:5349?transport=tcp
+VOICE_TURN_REST_SECRET=a_long_random_secret_shared_with_coturn
+VOICE_TURN_CREDENTIAL_TTL_SECONDS=3600
+```
+
+`VOICE_TURN_REST_SECRET` is preferred. The backend uses coturn REST authentication to create short-lived HMAC credentials tied to the joining player, so no long-lived TURN password appears in client source. `VOICE_TURN_USERNAME` and `VOICE_TURN_CREDENTIAL` are available only for local/private installations that cannot use temporary credentials.
+
+Production microphone capture requires HTTPS. `http://localhost` is allowed by browsers for local development. Do not test from a phone using a plain LAN HTTP URL; use a trusted HTTPS tunnel or the deployed site.
+
+### Voice testing
+
+1. Create a normal private or public room, then join it from two browser profiles or two devices.
+2. Start voice from each device by pressing **Join Voice** and accepting the privacy prompt and browser permission.
+3. Confirm each human seat shows a voice icon and speaking glow. Bots must show neither.
+4. Test self-mute, Mute All, individual mute and volume, device selectors, and push-to-talk.
+5. Refresh one player and confirm game reconnection completes before voice reconnects.
+6. Repeat with one device on Wi-Fi and one on mobile data to verify TURN relay operation.
+7. Deny permission and unplug a microphone to confirm the game remains playable and the voice status explains the problem.
+
+If audio is silent, check the browser's site microphone permission, operating-system input permission, selected input/output device, Mute All state, and TURN environment values. Some mobile browsers require another tap on the voice control before autoplaying remote audio.
 
 ## Folder Structure
 
@@ -140,6 +174,10 @@ VITE_FIREBASE_PROJECT_ID=your-project-id
 VITE_FIREBASE_APP_ID=your_public_web_app_id
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_public_sender_id
 FIREBASE_PROJECT_ID=your-project-id
+VOICE_STUN_URLS=stun:stun.l.google.com:19302
+VOICE_TURN_URLS=turn:turn.example.com:3478?transport=udp
+VOICE_TURN_REST_SECRET=your_server_only_turn_secret
+VOICE_TURN_CREDENTIAL_TTL_SECONDS=3600
 ```
 
 The default local config still works if `SQLITE_PATH` is omitted.
@@ -199,6 +237,7 @@ Backend on Render:
 3. The included free-service blueprint stores SQLite at `/tmp/bhabhi-thulla.sqlite`. Free instances lose local data when they restart or spin down.
 4. For durable production history, upgrade the service, attach a persistent disk, and set `SQLITE_PATH=/var/data/bhabhi-thulla.sqlite`.
 5. Set the backend-only `FIREBASE_PROJECT_ID` value.
+6. Set `VOICE_TURN_URLS` and `VOICE_TURN_REST_SECRET` for reliable cross-network voice. Keep the secret backend-only.
 
 Backend on Railway:
 

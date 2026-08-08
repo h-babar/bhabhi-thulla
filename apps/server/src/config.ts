@@ -14,11 +14,26 @@ function originsFromEnv(): string[] {
     .filter(Boolean);
 }
 
+function listFromEnv(name: string, fallback: string[] = []): string[] {
+  const value = process.env[name]?.trim();
+  return value
+    ? value.split(",").map((item) => item.trim()).filter(Boolean)
+    : fallback;
+}
+
 export const config = {
   port: numberFromEnv("PORT", 4000),
   clientOrigins: originsFromEnv(),
   sqlitePath: resolve(process.env.SQLITE_PATH ?? "./data/bhabhi-thulla.sqlite"),
   seedDemo: (process.env.SEED_DEMO ?? "true").toLowerCase() === "true",
   nodeEnv: process.env.NODE_ENV ?? "development",
-  firebaseProjectId: process.env.FIREBASE_PROJECT_ID?.trim()
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID?.trim(),
+  voice: {
+    stunUrls: listFromEnv("VOICE_STUN_URLS", ["stun:stun.l.google.com:19302"]),
+    turnUrls: listFromEnv("VOICE_TURN_URLS"),
+    turnUsername: process.env.VOICE_TURN_USERNAME?.trim(),
+    turnCredential: process.env.VOICE_TURN_CREDENTIAL?.trim(),
+    turnRestSecret: process.env.VOICE_TURN_REST_SECRET?.trim(),
+    turnCredentialTtlSeconds: numberFromEnv("VOICE_TURN_CREDENTIAL_TTL_SECONDS", 3600)
+  }
 };

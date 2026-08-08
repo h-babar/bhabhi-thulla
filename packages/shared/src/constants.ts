@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   targetScore: 5,
   turnSeconds: 20,
   allowSpectators: true,
+  voiceEnabled: true,
   funMode: "classic"
 };
 

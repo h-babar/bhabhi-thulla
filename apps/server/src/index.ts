@@ -15,6 +15,7 @@ import { GameDatabase } from "./db.js";
 import { createProfileRouter } from "./profileRoutes.js";
 import { trustedPlayerPayload } from "./auth.js";
 import { RoomManager, normalizeRoomCode } from "./roomManager.js";
+import { VoiceSignalingService } from "./voiceSignaling.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,17 +32,21 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   }
 });
 
+let voiceSignaling: VoiceSignalingService;
 const roomManager = new RoomManager(
   db,
   async (roomCode) => {
+    voiceSignaling?.syncRoom(roomCode);
     await broadcastRoom(roomCode);
   },
   async (payload) => {
+    voiceSignaling?.closeRoom(payload.roomCode);
     io.to(payload.roomCode).emit("room:closed", payload);
     io.in(payload.roomCode).socketsLeave(payload.roomCode);
     emitRoomList();
   }
 );
+voiceSignaling = new VoiceSignalingService(io, roomManager, config.voice);
 
 app.use(
   cors({
@@ -162,6 +167,7 @@ io.on("connection", (socket) => {
       return;
     }
 
+    voiceSignaling.leaveSocket(socket.id);
     const response = roomManager.quitRoom(payload.roomCode, seat.participantId, Boolean(payload.replaceWithBot));
     if (response.ok && response.stayedAsSpectator) {
       attachIfJoined(socket.id, response.roomCode, response.playerId);
@@ -179,6 +185,7 @@ io.on("connection", (socket) => {
       return;
     }
 
+    voiceSignaling.leaveSocket(socket.id);
     const response = roomManager.quitRoom(payload.roomCode, seat.participantId, Boolean(payload.replaceWithBot));
     if (response.ok && response.stayedAsSpectator) {
       attachIfJoined(socket.id, response.roomCode, response.playerId);
@@ -278,7 +285,9 @@ io.on("connection", (socket) => {
       return;
     }
 
-    ack(roomManager.updateSettings(payload, seat.participantId));
+    const response = roomManager.updateSettings(payload, seat.participantId);
+    ack(response);
+    if (response.ok) voiceSignaling.syncRoom(seat.roomCode);
   });
 
   socket.on("chat:send", (payload, ack) => {
@@ -315,7 +324,40 @@ io.on("connection", (socket) => {
     ack({ ok: true });
   });
 
+  socket.on("voice:join", (payload, ack) => {
+    ack(voiceSignaling.join(socket, payload));
+  });
+
+  socket.on("voice:leave", (payload, ack) => {
+    ack(voiceSignaling.leave(socket, payload));
+  });
+
+  socket.on("voice:offer", (payload, ack) => {
+    ack(voiceSignaling.forwardSession(socket, "voice:offer", payload));
+  });
+
+  socket.on("voice:answer", (payload, ack) => {
+    ack(voiceSignaling.forwardSession(socket, "voice:answer", payload));
+  });
+
+  socket.on("voice:ice-candidate", (payload, ack) => {
+    ack(voiceSignaling.forwardIce(socket, payload));
+  });
+
+  socket.on("voice:mute-state", (payload, ack) => {
+    ack(voiceSignaling.updateMute(socket, payload));
+  });
+
+  socket.on("voice:connection-state", (payload, ack) => {
+    ack(voiceSignaling.updateConnection(socket, payload));
+  });
+
+  socket.on("voice:report", (payload, ack) => {
+    ack(voiceSignaling.report(socket, payload));
+  });
+
   socket.on("disconnect", () => {
+    voiceSignaling.leaveSocket(socket.id);
     const roomCode = roomManager.disconnectSocket(socket.id);
     if (roomCode) {
       emitRoomList();
@@ -408,6 +450,7 @@ function attachIfJoined(
 
   const previousSeat = roomManager.getSocketSeat(socketId);
   if (previousSeat && previousSeat.roomCode !== normalizeRoomCode(roomCode)) {
+    voiceSignaling.leaveSocket(socketId);
     socket.leave(previousSeat.roomCode);
   }
 

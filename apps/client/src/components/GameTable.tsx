@@ -45,6 +45,9 @@ import { RulesModal } from "./RulesModal.js";
 import { ScoreBoard } from "./ScoreBoard.js";
 import { SettingsModal } from "./SettingsModal.js";
 import { ProfileMenu } from "./auth/ProfileMenu.js";
+import { PlayerVoiceControl } from "../voice/PlayerVoiceControl.js";
+import { VoiceControls } from "../voice/VoiceControls.js";
+import { useVoiceChat } from "../voice/VoiceChatProvider.js";
 
 type ActiveTableTool = "none" | "odds" | "score" | "chat";
 type HandSortMode = "deal" | "suit" | "rank";
@@ -356,6 +359,7 @@ export function GameTable() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <VoiceControls />
           <button className="secondary-button" onClick={() => setRulesOpen(true)}>
             <BookOpen size={17} />
             Rules
@@ -719,6 +723,21 @@ function LobbyPanel({ state, isHost, playerId, addBot, setReady, startGame, upda
               <option value="reverse">Reverse Rules - reverse order</option>
             </select>
           </label>
+          {!tournamentLocked && state.roomMode !== "quick" && state.roomMode !== "bots" ? (
+            <label className="lobby-voice-toggle">
+              <span>
+                <strong>Live voice chat</strong>
+                <small>Human players only. Never recorded.</small>
+              </span>
+              <input
+                type="checkbox"
+                checked={state.settings.voiceEnabled}
+                disabled={!isHost}
+                onChange={(event) => updateRoomSettings({ voiceEnabled: event.target.checked })}
+              />
+              <i aria-hidden="true" />
+            </label>
+          ) : null}
           <div className="rounded-2xl bg-teal-500/10 p-3 text-sm font-semibold text-teal-900 dark:text-teal-100">
             {state.tournament
               ? "Tournament rules are locked: one stage, one winner, then the bracket advances."
@@ -780,6 +799,9 @@ function SeatIdentity({
   active: boolean;
   host: boolean;
 }) {
+  const voice = useVoiceChat();
+  const voiceParticipant = voice.participants.find((participant) => participant.playerId === player.id);
+  const voiceSpeaking = Boolean(voiceParticipant?.isSpeaking && !voiceParticipant.isLocallyMuted);
   const statusText = !player.connected
     ? "Disconnected"
     : active
@@ -789,12 +811,18 @@ function SeatIdentity({
       : "Waiting";
 
   return (
-    <div className={clsx("seat-identity", active && "seat-identity-active", !player.connected && "seat-identity-offline")}>
+    <div className={clsx(
+      "seat-identity",
+      active && "seat-identity-active",
+      voiceSpeaking && "seat-identity-speaking",
+      !player.connected && "seat-identity-offline"
+    )}>
       <div className="seat-nameplate">
         <div className="seat-name-row">
           <p className="seat-player-name">{player.username}</p>
           {host ? <Crown className="seat-mini-icon seat-host-icon" size={13} /> : null}
           {player.isBot ? <Bot className="seat-mini-icon seat-bot-icon" size={13} /> : null}
+          <PlayerVoiceControl playerId={player.id} isBot={player.isBot} isYou={player.isYou} />
         </div>
         <p className="seat-player-status">{statusText}</p>
       </div>

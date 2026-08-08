@@ -41,6 +41,7 @@ export function normalizeSettings(settings?: Partial<GameSettings>): GameSetting
     targetScore,
     turnSeconds,
     allowSpectators: settings?.allowSpectators ?? DEFAULT_SETTINGS.allowSpectators,
+    voiceEnabled: settings?.voiceEnabled ?? DEFAULT_SETTINGS.voiceEnabled,
     funMode
   };
 }

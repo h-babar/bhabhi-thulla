@@ -22,7 +22,7 @@ import { primeBackgroundMusic, stopBackgroundMusic } from "../lib/music.js";
 import { playSound } from "../lib/sound.js";
 import { useEngagementStore } from "./engagementStore.js";
 
-type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+export type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 type ThemeMode = "light" | "dark";
 export type CardStyle =
   | "classic"
@@ -137,6 +137,10 @@ interface GameStore {
 }
 
 let socket: GameSocket | undefined;
+
+export function getGameSocket(): GameSocket | undefined {
+  return socket;
+}
 
 const initialTheme: ThemeMode =
   typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches

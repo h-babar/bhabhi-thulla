@@ -45,7 +45,24 @@ export interface GameSettings {
   targetScore: number;
   turnSeconds: number;
   allowSpectators: boolean;
+  voiceEnabled: boolean;
   funMode: FunMode;
+}
+
+export type VoiceConnectionState =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "failed";
+
+export interface VoiceParticipantState {
+  playerId: string;
+  displayName: string;
+  isHuman: true;
+  isVoiceEnabled: boolean;
+  isSelfMuted: boolean;
+  connectionState: VoiceConnectionState;
 }
 
 export interface TournamentNation {
