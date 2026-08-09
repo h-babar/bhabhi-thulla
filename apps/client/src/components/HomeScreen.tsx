@@ -41,6 +41,8 @@ import { SettingsModal } from "./SettingsModal.js";
 import { ProfileMenu } from "./auth/ProfileMenu.js";
 import { PlayerAvatar } from "./auth/PlayerAvatar.js";
 import { useAuthStore } from "../store/authStore.js";
+import { FriendsButton } from "./friends/FriendsButton.js";
+import { FriendsOnlineWidget } from "./friends/FriendsOnlineWidget.js";
 
 interface HomeScreenProps {
   initialRoomCode?: string;
@@ -141,6 +143,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
               <Clipboard size={17} />
               <span className="hidden sm:inline">Rules</span>
             </button>
+            <FriendsButton className="home-friends-button" />
             <button className="home-nav-button is-icon" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
               <Settings size={18} />
             </button>
@@ -336,6 +339,8 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
             </button>
           </aside>
         </section>
+
+        <FriendsOnlineWidget />
 
         <div className="home-section-heading">
           <div>

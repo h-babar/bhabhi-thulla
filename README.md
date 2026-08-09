@@ -7,6 +7,7 @@ Bhabhi Thulla is a full-stack, real-time multiplayer card game built with React,
 - Private rooms with shareable room code and link
 - Guest player profiles plus secure Google sign-in through Firebase Authentication
 - Permanent profiles with unique usernames, XP, levels, ranks, coins, statistics, achievements, preferences, and match history
+- Persistent friends, live presence, requests, recent players, privacy controls, blocking, and private game invitations
 - Real-time Socket.IO gameplay, chat, emoji reactions, spectators, timers, and room list
 - Opt-in WebRTC voice chat for human multiplayer seats with self-mute, deafen, per-player volume/mute, speaking indicators, device controls, push-to-talk, and reconnect support
 - Server-authoritative Bhabhi Thulla rules engine for shuffling, dealing, validation, scoring, turns, timers, and results
@@ -48,6 +49,14 @@ The browser stores `sessionId` and `roomCode` in localStorage so a refresh can r
 Rooms follow a bounded lifecycle. Completed matches remain open for 12 seconds so players can see the result, then the server removes the room and its live SQLite snapshot. Rooms with no connected human players disappear from discovery immediately and are deleted after a five-minute reconnect grace period. Active tournament stages are retained so the host can advance to the next stage.
 
 Players who choose **Replace me with bot** remain at the table as spectators and can reclaim that exact seat until the match finishes. The server preserves the seat's hand, score, and turn order while validating that only its original owner can take it back.
+
+## Friends And Presence
+
+Registered players can search public usernames or player IDs, exchange friend requests, see live activity, invite available friends, join friends in public lobbies, and reconnect with registered opponents from completed matches. Guests can open the social UI but are invited to create a free profile before storing permanent relationships.
+
+Friendship state, blocks, request cooldowns, list limits, room eligibility, and invitation expiry are enforced by the Socket.IO server. Clients never supply their own account identity, and private room codes are revealed only when an authorised invitation is accepted. Presence follows every connected device and reports online, lobby, private room, match, tournament, away, or offline state according to each player's activity privacy setting.
+
+The initial limits are 250 friends, 50 pending outgoing requests, a one-minute repeated-request cooldown, and a two-minute game invitation lifetime. These values live in `FRIEND_LIMITS` in `apps/server/src/db.ts`.
 
 ## Live Voice Chat
 

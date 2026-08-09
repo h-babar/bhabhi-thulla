@@ -14,6 +14,20 @@ import type {
   VoiceParticipantState
 } from "./types.js";
 import type { AccountType } from "./profile.js";
+import type {
+  FriendActionResponse,
+  FriendInviteActionPayload,
+  FriendNotification,
+  FriendPresencePayload,
+  FriendRequestActionPayload,
+  FriendSearchPayload,
+  FriendSearchResponse,
+  FriendsAuthPayload,
+  FriendsAuthResponse,
+  FriendsAwayPayload,
+  FriendsSnapshot,
+  FriendTargetPayload
+} from "./social.js";
 
 export interface PlayerProfilePayload {
   username: string;
@@ -215,6 +229,15 @@ export interface ServerToClientEvents {
   "voice:mute-state": (payload: VoicePeerStatePayload) => void;
   "voice:connection-state": (payload: VoicePeerStatePayload) => void;
   "voice:error": (message: string) => void;
+  "friends:snapshot": (snapshot: FriendsSnapshot) => void;
+  "friends:presence": (payload: FriendPresencePayload) => void;
+  "friends:request": (notification: FriendNotification) => void;
+  "friends:requestAccepted": (notification: FriendNotification) => void;
+  "friends:removed": (payload: FriendTargetPayload) => void;
+  "friends:invite": (notification: FriendNotification) => void;
+  "friends:inviteAccepted": (notification: FriendNotification) => void;
+  "friends:inviteDeclined": (notification: FriendNotification) => void;
+  "friends:notification": (notification: FriendNotification) => void;
   roomState: (state: PublicGameState) => void;
   privateHand: (payload: PrivateHandPayload) => void;
   gameError: (message: string) => void;
@@ -244,6 +267,22 @@ export interface ClientToServerEvents {
   "voice:mute-state": (payload: VoiceMuteStatePayload, ack: (response: BasicResponse) => void) => void;
   "voice:connection-state": (payload: VoiceConnectionStatePayload, ack: (response: BasicResponse) => void) => void;
   "voice:report": (payload: VoiceReportPayload, ack: (response: BasicResponse) => void) => void;
+  "friends:authenticate": (payload: FriendsAuthPayload, ack: (response: FriendsAuthResponse) => void) => void;
+  "friends:disconnect": (ack: (response: BasicResponse) => void) => void;
+  "friends:refresh": (ack: (response: FriendsAuthResponse) => void) => void;
+  "friends:search": (payload: FriendSearchPayload, ack: (response: FriendSearchResponse) => void) => void;
+  "friends:request": (payload: FriendTargetPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:acceptRequest": (payload: FriendRequestActionPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:declineRequest": (payload: FriendRequestActionPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:cancelRequest": (payload: FriendRequestActionPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:remove": (payload: FriendTargetPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:block": (payload: FriendTargetPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:unblock": (payload: FriendTargetPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:invite": (payload: FriendTargetPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:acceptInvite": (payload: FriendInviteActionPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:declineInvite": (payload: FriendInviteActionPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:joinFriend": (payload: FriendTargetPayload, ack: (response: FriendActionResponse) => void) => void;
+  "friends:setAway": (payload: FriendsAwayPayload, ack: (response: BasicResponse) => void) => void;
   "settings:update": (payload: SettingsPayload, ack: (response: BasicResponse) => void) => void;
   createRoom: (payload: CreateRoomPayload, ack: (response: RoomJoinResponse) => void) => void;
   joinRoom: (payload: JoinRoomPayload, ack: (response: RoomJoinResponse) => void) => void;

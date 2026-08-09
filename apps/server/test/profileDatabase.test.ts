@@ -37,6 +37,66 @@ test("returning Google users receive the same permanent profile", () => {
   });
 });
 
+test("friend requests are canonical, reciprocal, and duplicate-safe", () => {
+  withDatabase((database) => {
+    const alice = database.getOrCreateGoogleProfile({ providerUserId: "friend-a", email: "a@example.com", displayName: "Alice Ace" });
+    const bob = database.getOrCreateGoogleProfile({ providerUserId: "friend-b", email: "b@example.com", displayName: "Bob King" });
+    const request = database.sendFriendRequest(alice.id, bob.id, 1_000);
+
+    assert.equal(database.getRelationship(alice.id, bob.id), "request_sent");
+    assert.equal(database.getRelationship(bob.id, alice.id), "request_received");
+    assert.throws(() => database.sendFriendRequest(alice.id, bob.id, 2_000), /already sent/i);
+    assert.throws(() => database.sendFriendRequest(bob.id, alice.id, 2_000), /already sent you/i);
+
+    database.acceptFriendRequest(bob.id, request.id, 3_000);
+    assert.equal(database.getRelationship(alice.id, bob.id), "friends");
+    assert.deepEqual(database.listFriendIds(alice.id), [bob.id]);
+    assert.deepEqual(database.listFriendIds(bob.id), [alice.id]);
+  });
+});
+
+test("blocking removes friendships and prevents requests and invitations", () => {
+  withDatabase((database) => {
+    const alice = database.getOrCreateGoogleProfile({ providerUserId: "block-a", email: "a@example.com", displayName: "Alice" });
+    const bob = database.getOrCreateGoogleProfile({ providerUserId: "block-b", email: "b@example.com", displayName: "Bob" });
+    const request = database.sendFriendRequest(alice.id, bob.id, 1_000);
+    database.acceptFriendRequest(bob.id, request.id, 2_000);
+    database.blockPlayer(alice.id, bob.id, 3_000);
+
+    assert.equal(database.getRelationship(alice.id, bob.id), "blocked");
+    assert.equal(database.listFriendIds(alice.id).length, 0);
+    assert.throws(() => database.sendFriendRequest(bob.id, alice.id, 100_000), /unavailable/i);
+    assert.throws(() => database.createGameInvite(bob.id, alice.id, "ROOM11", 100_000), /friends/i);
+  });
+});
+
+test("accepted friends can exchange expiring game invitations", () => {
+  withDatabase((database) => {
+    const alice = database.getOrCreateGoogleProfile({ providerUserId: "invite-a", email: "a@example.com", displayName: "Alice" });
+    const bob = database.getOrCreateGoogleProfile({ providerUserId: "invite-b", email: "b@example.com", displayName: "Bob" });
+    const request = database.sendFriendRequest(alice.id, bob.id, 1_000);
+    database.acceptFriendRequest(bob.id, request.id, 2_000);
+    const invite = database.createGameInvite(alice.id, bob.id, "ROOM22", 10_000, 30_000);
+
+    assert.equal(database.listPendingGameInvites(bob.id, 20_000)[0]?.roomCode, "ROOM22");
+    assert.equal(database.respondToGameInvite(bob.id, invite.id, "accepted", 20_000).status, "accepted");
+    assert.equal(database.listPendingGameInvites(bob.id, 20_000).length, 0);
+  });
+});
+
+test("social search exposes public profile fields and respects blocks", () => {
+  withDatabase((database) => {
+    const alice = database.getOrCreateGoogleProfile({ providerUserId: "search-a", email: "private-a@example.com", displayName: "Alice Search" });
+    const bob = database.getOrCreateGoogleProfile({ providerUserId: "search-b", email: "private-b@example.com", displayName: "Bob Search" });
+    const result = database.searchSocialProfiles(alice.id, bob.username);
+
+    assert.equal(result[0]?.id, bob.id);
+    assert.equal("email" in result[0]!, false);
+    database.blockPlayer(alice.id, bob.id);
+    assert.equal(database.searchSocialProfiles(alice.id, bob.username).length, 0);
+  });
+});
+
 test("generated usernames remain unique and profile edits enforce availability", () => {
   withDatabase((database) => {
     const first = database.getOrCreateGoogleProfile({

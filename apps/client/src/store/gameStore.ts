@@ -134,6 +134,7 @@ interface GameStore {
   reclaimSeat: () => void;
   leaveRoom: () => void;
   clearError: () => void;
+  enterRoomFromSocial: (response: RoomJoinResponse) => void;
 }
 
 let socket: GameSocket | undefined;
@@ -662,7 +663,8 @@ export const useGameStore = create<GameStore>()(
             error: undefined
           });
         },
-        clearError: () => set({ error: undefined })
+        clearError: () => set({ error: undefined }),
+        enterRoomFromSocial: (response) => handleJoinResponse(response)
       };
     },
     {

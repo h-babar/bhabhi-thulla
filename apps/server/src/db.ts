@@ -9,7 +9,9 @@ import type {
   PlayerProfile,
   PlayerStats,
   RoundSummary,
-  UpdatePlayerProfileInput
+  UpdatePlayerProfileInput,
+  FriendRelationship,
+  GameInviteStatus
 } from "@getaway-cards/shared";
 import { mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -54,6 +56,56 @@ interface GoogleUserInput {
   displayName: string;
   photoUrl?: string;
 }
+
+export interface SocialProfileRecord {
+  id: string;
+  displayName: string;
+  username: string;
+  photoUrl?: string;
+  avatarId: string;
+  profileFrameId: string;
+  level: number;
+  rank: string;
+  lastActiveAt: number;
+}
+
+export interface FriendshipRecord {
+  id: string;
+  requesterUserId: string;
+  addresseeUserId: string;
+  status: "pending" | "accepted";
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GameInviteRecord {
+  id: string;
+  senderUserId: string;
+  recipientUserId: string;
+  roomCode: string;
+  status: GameInviteStatus;
+  createdAt: number;
+  expiresAt: number;
+}
+
+export interface RecentPlayerRecord {
+  id: string;
+  profileId?: string;
+  displayName: string;
+  username?: string;
+  avatarId: string;
+  playedAt: number;
+  result: "win" | "loss" | "completed";
+  gameMode: string;
+}
+
+export const FRIEND_LIMITS = Object.freeze({
+  maxFriends: 250,
+  maxPendingOutgoing: 50,
+  repeatRequestCooldownMs: 60_000,
+  inviteCooldownMs: 10_000,
+  inviteTtlMs: 120_000
+});
 
 export interface PersistedRoundHistory {
   roomCode: string;
@@ -276,6 +328,246 @@ export class GameDatabase {
     this.db.prepare("DELETE FROM rooms WHERE room_code = ?").run(roomCode);
   }
 
+  getSocialProfile(userId: string): SocialProfileRecord | undefined {
+    const row = this.db.prepare(
+      `SELECT id, display_name, username, photo_url, avatar_id, profile_frame_id,
+              level, rank, last_active_at FROM users WHERE id = ?`
+    ).get(userId) as Record<string, unknown> | undefined;
+    return row ? socialProfileFromRow(row) : undefined;
+  }
+
+  searchSocialProfiles(currentUserId: string, query: string, limit = 20): SocialProfileRecord[] {
+    const normalized = query.trim().replace(/[^a-zA-Z0-9_ -]/g, "").slice(0, 32);
+    if (normalized.length < 2) return [];
+    const pattern = `%${normalized}%`;
+    const rows = this.db.prepare(
+      `SELECT id, display_name, username, photo_url, avatar_id, profile_frame_id,
+              level, rank, last_active_at
+       FROM users
+       WHERE id != ?
+         AND (username LIKE ? COLLATE NOCASE OR id = ? OR display_name LIKE ? COLLATE NOCASE)
+         AND NOT EXISTS (
+           SELECT 1 FROM player_blocks b
+           WHERE (b.blocker_user_id = ? AND b.blocked_user_id = users.id)
+              OR (b.blocker_user_id = users.id AND b.blocked_user_id = ?)
+         )
+       ORDER BY CASE WHEN username = ? COLLATE NOCASE THEN 0 ELSE 1 END, username ASC
+       LIMIT ?`
+    ).all(currentUserId, pattern, normalized, pattern, currentUserId, currentUserId, normalized, Math.min(25, limit)) as Array<Record<string, unknown>>;
+    return rows.map(socialProfileFromRow);
+  }
+
+  getRelationship(currentUserId: string, targetUserId: string): FriendRelationship {
+    const block = this.db.prepare(
+      `SELECT blocker_user_id FROM player_blocks
+       WHERE (blocker_user_id = ? AND blocked_user_id = ?)
+          OR (blocker_user_id = ? AND blocked_user_id = ?)`
+    ).get(currentUserId, targetUserId, targetUserId, currentUserId) as { blocker_user_id: string } | undefined;
+    if (block) return "blocked";
+    const friendship = this.friendshipForPair(currentUserId, targetUserId);
+    if (!friendship) return "none";
+    if (friendship.status === "accepted") return "friends";
+    return friendship.requesterUserId === currentUserId ? "request_sent" : "request_received";
+  }
+
+  listFriendIds(userId: string): string[] {
+    const rows = this.db.prepare(
+      `SELECT CASE WHEN requester_user_id = ? THEN addressee_user_id ELSE requester_user_id END AS friend_id
+       FROM friendships
+       WHERE status = 'accepted' AND (requester_user_id = ? OR addressee_user_id = ?)`
+    ).all(userId, userId, userId) as Array<{ friend_id: string }>;
+    return rows.map((row) => row.friend_id);
+  }
+
+  listFriendProfiles(userId: string): SocialProfileRecord[] {
+    return this.listFriendIds(userId)
+      .map((friendId) => this.getSocialProfile(friendId))
+      .filter((profile): profile is SocialProfileRecord => Boolean(profile));
+  }
+
+  listFriendRequests(userId: string): FriendshipRecord[] {
+    const rows = this.db.prepare(
+      `SELECT id, requester_user_id, addressee_user_id, status, created_at, updated_at
+       FROM friendships
+       WHERE status = 'pending' AND (requester_user_id = ? OR addressee_user_id = ?)
+       ORDER BY created_at DESC`
+    ).all(userId, userId) as Array<Record<string, unknown>>;
+    return rows.map(friendshipFromRow);
+  }
+
+  sendFriendRequest(requesterUserId: string, addresseeUserId: string, now = Date.now()): FriendshipRecord {
+    if (requesterUserId === addresseeUserId) throw new Error("You cannot add yourself.");
+    if (!this.getSocialProfile(addresseeUserId)) throw new Error("That player no longer exists.");
+    if (this.isBlockedEitherWay(requesterUserId, addresseeUserId)) throw new Error("This player is unavailable.");
+    if (this.listFriendIds(requesterUserId).length >= FRIEND_LIMITS.maxFriends) throw new Error("Your friends list is full.");
+    const pendingCount = this.db.prepare(
+      "SELECT COUNT(*) AS count FROM friendships WHERE requester_user_id = ? AND status = 'pending'"
+    ).get(requesterUserId) as { count: number };
+    if (pendingCount.count >= FRIEND_LIMITS.maxPendingOutgoing) throw new Error("You have reached the pending request limit.");
+    const existing = this.friendshipForPair(requesterUserId, addresseeUserId);
+    if (existing?.status === "accepted") throw new Error("You are already friends.");
+    if (existing?.status === "pending") {
+      throw new Error(existing.requesterUserId === requesterUserId ? "Friend request already sent." : "This player already sent you a request.");
+    }
+    const pairKey = friendshipPairKey(requesterUserId, addresseeUserId);
+    const cooldown = this.db.prepare(
+      "SELECT last_requested_at FROM friend_request_cooldowns WHERE pair_key = ?"
+    ).get(pairKey) as { last_requested_at: number } | undefined;
+    if (cooldown && now - cooldown.last_requested_at < FRIEND_LIMITS.repeatRequestCooldownMs) {
+      throw new Error("Wait a minute before sending this player another request.");
+    }
+    const id = randomUUID();
+    this.db.exec("BEGIN IMMEDIATE;");
+    try {
+      this.db.prepare(
+        `INSERT INTO friendships (id, pair_key, requester_user_id, addressee_user_id, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+      ).run(id, pairKey, requesterUserId, addresseeUserId, now, now);
+      this.db.prepare(
+        `INSERT INTO friend_request_cooldowns (pair_key, last_requested_at) VALUES (?, ?)
+         ON CONFLICT(pair_key) DO UPDATE SET last_requested_at = excluded.last_requested_at`
+      ).run(pairKey, now);
+      this.db.exec("COMMIT;");
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      throw error;
+    }
+    return this.friendshipById(id)!;
+  }
+
+  acceptFriendRequest(userId: string, requestId: string, now = Date.now()): FriendshipRecord {
+    const request = this.friendshipById(requestId);
+    if (!request || request.status !== "pending" || request.addresseeUserId !== userId) {
+      throw new Error("That friend request is no longer available.");
+    }
+    if (this.isBlockedEitherWay(request.requesterUserId, request.addresseeUserId)) {
+      throw new Error("That friend request can no longer be accepted.");
+    }
+    if (this.listFriendIds(request.requesterUserId).length >= FRIEND_LIMITS.maxFriends) {
+      throw new Error("That player's friends list is full.");
+    }
+    if (this.listFriendIds(request.addresseeUserId).length >= FRIEND_LIMITS.maxFriends) {
+      throw new Error("Your friends list is full.");
+    }
+    this.db.prepare("UPDATE friendships SET status = 'accepted', updated_at = ? WHERE id = ?").run(now, requestId);
+    return this.friendshipById(requestId)!;
+  }
+
+  declineFriendRequest(userId: string, requestId: string): FriendshipRecord {
+    const request = this.friendshipById(requestId);
+    if (!request || request.status !== "pending" || request.addresseeUserId !== userId) {
+      throw new Error("That friend request is no longer available.");
+    }
+    this.db.prepare("DELETE FROM friendships WHERE id = ?").run(requestId);
+    return request;
+  }
+
+  cancelFriendRequest(userId: string, requestId: string): FriendshipRecord {
+    const request = this.friendshipById(requestId);
+    if (!request || request.status !== "pending" || request.requesterUserId !== userId) {
+      throw new Error("That outgoing request is no longer available.");
+    }
+    this.db.prepare("DELETE FROM friendships WHERE id = ?").run(requestId);
+    return request;
+  }
+
+  removeFriend(userId: string, friendUserId: string): void {
+    const friendship = this.friendshipForPair(userId, friendUserId);
+    if (!friendship || friendship.status !== "accepted") throw new Error("That player is not in your friends list.");
+    this.db.prepare("DELETE FROM friendships WHERE id = ?").run(friendship.id);
+  }
+
+  blockPlayer(blockerUserId: string, blockedUserId: string, now = Date.now()): void {
+    if (blockerUserId === blockedUserId) throw new Error("You cannot block yourself.");
+    this.db.exec("BEGIN IMMEDIATE;");
+    try {
+      const friendship = this.friendshipForPair(blockerUserId, blockedUserId);
+      if (friendship) this.db.prepare("DELETE FROM friendships WHERE id = ?").run(friendship.id);
+      this.db.prepare(
+        `INSERT OR IGNORE INTO player_blocks (id, blocker_user_id, blocked_user_id, created_at)
+         VALUES (?, ?, ?, ?)`
+      ).run(randomUUID(), blockerUserId, blockedUserId, now);
+      this.db.prepare(
+        `UPDATE game_invites SET status = 'cancelled'
+         WHERE status = 'pending' AND ((sender_user_id = ? AND recipient_user_id = ?) OR (sender_user_id = ? AND recipient_user_id = ?))`
+      ).run(blockerUserId, blockedUserId, blockedUserId, blockerUserId);
+      this.db.exec("COMMIT;");
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      throw error;
+    }
+  }
+
+  unblockPlayer(blockerUserId: string, blockedUserId: string): void {
+    this.db.prepare("DELETE FROM player_blocks WHERE blocker_user_id = ? AND blocked_user_id = ?")
+      .run(blockerUserId, blockedUserId);
+  }
+
+  isBlockedEitherWay(firstUserId: string, secondUserId: string): boolean {
+    return Boolean(this.db.prepare(
+      `SELECT 1 FROM player_blocks
+       WHERE (blocker_user_id = ? AND blocked_user_id = ?)
+          OR (blocker_user_id = ? AND blocked_user_id = ?)`
+    ).get(firstUserId, secondUserId, secondUserId, firstUserId));
+  }
+
+  createGameInvite(senderUserId: string, recipientUserId: string, roomCode: string, now = Date.now(), ttlMs = FRIEND_LIMITS.inviteTtlMs): GameInviteRecord {
+    if (this.getRelationship(senderUserId, recipientUserId) !== "friends") throw new Error("Only friends can receive game invites.");
+    this.expireGameInvites(now);
+    const recent = this.db.prepare(
+      `SELECT created_at FROM game_invites WHERE sender_user_id = ? AND recipient_user_id = ?
+       ORDER BY created_at DESC LIMIT 1`
+    ).get(senderUserId, recipientUserId) as { created_at: number } | undefined;
+    if (recent && now - recent.created_at < FRIEND_LIMITS.inviteCooldownMs) throw new Error("Invite already sent. Give your friend a moment.");
+    const id = randomUUID();
+    this.db.prepare(
+      `INSERT INTO game_invites (id, sender_user_id, recipient_user_id, room_code, status, created_at, expires_at)
+       VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+    ).run(id, senderUserId, recipientUserId, roomCode, now, now + ttlMs);
+    return this.gameInviteById(id)!;
+  }
+
+  listPendingGameInvites(userId: string, now = Date.now()): GameInviteRecord[] {
+    this.expireGameInvites(now);
+    const rows = this.db.prepare(
+      `SELECT * FROM game_invites WHERE recipient_user_id = ? AND status = 'pending'
+       ORDER BY created_at DESC LIMIT 20`
+    ).all(userId) as Array<Record<string, unknown>>;
+    return rows.map(gameInviteFromRow);
+  }
+
+  getGameInvite(inviteId: string): GameInviteRecord | undefined {
+    return this.gameInviteById(inviteId);
+  }
+
+  respondToGameInvite(userId: string, inviteId: string, status: "accepted" | "declined", now = Date.now()): GameInviteRecord {
+    this.expireGameInvites(now);
+    const invite = this.gameInviteById(inviteId);
+    if (!invite || invite.recipientUserId !== userId || invite.status !== "pending") {
+      throw new Error("That invitation has expired or is no longer available.");
+    }
+    if (this.isBlockedEitherWay(invite.senderUserId, invite.recipientUserId)) throw new Error("That invitation is unavailable.");
+    this.db.prepare("UPDATE game_invites SET status = ? WHERE id = ?").run(status, inviteId);
+    return { ...invite, status };
+  }
+
+  listRecentPlayers(userId: string, limit = 20): RecentPlayerRecord[] {
+    const rows = this.db.prepare(
+      `SELECT id, recent_profile_id, display_name, username, avatar_id, played_at, result, game_mode
+       FROM recent_players WHERE owner_user_id = ? ORDER BY played_at DESC LIMIT ?`
+    ).all(userId, Math.min(50, limit)) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      id: String(row.id),
+      profileId: row.recent_profile_id ? String(row.recent_profile_id) : undefined,
+      displayName: String(row.display_name),
+      username: row.username ? String(row.username) : undefined,
+      avatarId: String(row.avatar_id),
+      playedAt: Number(row.played_at),
+      result: row.result as RecentPlayerRecord["result"],
+      gameMode: String(row.game_mode)
+    }));
+  }
+
   listRecentHistory(limit = 20): PersistedRoundHistory[] {
     const rows = this.db
       .prepare(
@@ -425,6 +717,59 @@ export class GameDatabase {
         .run(nextXp, levelFromXp(nextXp), rankFromXp(nextXp), won ? 120 : 35, completedAt, player.profileId);
       this.syncAchievements(player.profileId, stats, completedAt);
     }
+    this.recordRecentPlayers(state, completedAt, positions);
+  }
+
+  private recordRecentPlayers(state: GameState, completedAt: number, positions: string[]): void {
+    const humans = state.players.filter((player) => !player.isBot);
+    for (const owner of humans) {
+      if (owner.accountType !== "registered" || !owner.profileId) continue;
+      const ownerWon = owner.id === state.championId || (!state.championId && owner.id !== state.bhabhiId);
+      for (const opponent of humans) {
+        if (opponent.id === owner.id) continue;
+        const profile = opponent.profileId ? this.getSocialProfile(opponent.profileId) : undefined;
+        const recentKey = opponent.profileId ?? opponent.id;
+        this.db.prepare(
+          `INSERT INTO recent_players
+           (id, owner_user_id, recent_profile_id, display_name, username, avatar_id, played_at, result, game_mode)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET played_at = excluded.played_at, result = excluded.result`
+        ).run(
+          `${state.roomCode}:${owner.profileId}:${recentKey}`,
+          owner.profileId,
+          opponent.profileId ?? null,
+          profile?.displayName ?? opponent.username,
+          profile?.username ?? null,
+          opponent.avatar,
+          completedAt,
+          ownerWon ? "win" : positions.includes(owner.id) ? "loss" : "completed",
+          state.roomMode ?? state.settings.funMode
+        );
+      }
+    }
+  }
+
+  private friendshipForPair(firstUserId: string, secondUserId: string): FriendshipRecord | undefined {
+    const row = this.db.prepare(
+      "SELECT id, requester_user_id, addressee_user_id, status, created_at, updated_at FROM friendships WHERE pair_key = ?"
+    ).get(friendshipPairKey(firstUserId, secondUserId)) as Record<string, unknown> | undefined;
+    return row ? friendshipFromRow(row) : undefined;
+  }
+
+  private friendshipById(id: string): FriendshipRecord | undefined {
+    const row = this.db.prepare(
+      "SELECT id, requester_user_id, addressee_user_id, status, created_at, updated_at FROM friendships WHERE id = ?"
+    ).get(id) as Record<string, unknown> | undefined;
+    return row ? friendshipFromRow(row) : undefined;
+  }
+
+  private gameInviteById(id: string): GameInviteRecord | undefined {
+    const row = this.db.prepare("SELECT * FROM game_invites WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+    return row ? gameInviteFromRow(row) : undefined;
+  }
+
+  private expireGameInvites(now: number): void {
+    this.db.prepare("UPDATE game_invites SET status = 'expired' WHERE status = 'pending' AND expires_at <= ?").run(now);
   }
 
   private getAchievements(userId: string): PlayerAchievement[] {
@@ -488,7 +833,7 @@ export class GameDatabase {
     this.db.prepare(
       `UPDATE player_preferences SET table_theme = ?, card_back = ?, sound_enabled = ?,
        music_enabled = ?, vibration_enabled = ?, reduced_motion = ?, high_contrast = ?,
-       language = ? WHERE user_id = ?`
+       language = ?, activity_visibility = ?, friend_online_notifications = ? WHERE user_id = ?`
     ).run(
       preferences.tableTheme,
       preferences.cardBack,
@@ -498,6 +843,8 @@ export class GameDatabase {
       boolInt(preferences.reducedMotion),
       boolInt(preferences.highContrast),
       preferences.language,
+      preferences.activityVisibility,
+      boolInt(preferences.friendOnlineNotifications),
       userId
     );
   }
@@ -646,8 +993,57 @@ export class GameDatabase {
         merged_at INTEGER NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS friendships (
+        id TEXT PRIMARY KEY,
+        pair_key TEXT NOT NULL UNIQUE,
+        requester_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        addressee_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL CHECK(status IN ('pending', 'accepted')),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS friend_request_cooldowns (
+        pair_key TEXT PRIMARY KEY,
+        last_requested_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS player_blocks (
+        id TEXT PRIMARY KEY,
+        blocker_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        blocked_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL,
+        UNIQUE(blocker_user_id, blocked_user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS game_invites (
+        id TEXT PRIMARY KEY,
+        sender_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipient_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        room_code TEXT NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('pending', 'accepted', 'declined', 'expired', 'cancelled')),
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS recent_players (
+        id TEXT PRIMARY KEY,
+        owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recent_profile_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        display_name TEXT NOT NULL,
+        username TEXT,
+        avatar_id TEXT NOT NULL,
+        played_at INTEGER NOT NULL,
+        result TEXT NOT NULL,
+        game_mode TEXT NOT NULL
+      );
+
       CREATE INDEX IF NOT EXISTS idx_match_history_user_completed
         ON match_history (user_id, completed_at DESC);
+
+      CREATE INDEX IF NOT EXISTS idx_friendships_users ON friendships (requester_user_id, addressee_user_id, status);
+      CREATE INDEX IF NOT EXISTS idx_game_invites_recipient ON game_invites (recipient_user_id, status, expires_at);
+      CREATE INDEX IF NOT EXISTS idx_recent_players_owner ON recent_players (owner_user_id, played_at DESC);
 
       INSERT OR IGNORE INTO achievements (id, name, description, icon, requirement, metric) VALUES
         ('first_table', 'First Table', 'Complete your first match.', 'cards', 1, 'gamesPlayed'),
@@ -657,6 +1053,15 @@ export class GameDatabase {
         ('cup_champion', 'Cup Champion', 'Win a tournament.', 'trophy', 1, 'tournamentWins'),
         ('table_veteran', 'Table Veteran', 'Complete fifty matches.', 'crown', 50, 'gamesPlayed');
     `);
+    this.ensureColumn("player_preferences", "activity_visibility", "TEXT NOT NULL DEFAULT 'friends'");
+    this.ensureColumn("player_preferences", "friend_online_notifications", "INTEGER NOT NULL DEFAULT 0");
+  }
+
+  private ensureColumn(table: string, column: string, definition: string): void {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((candidate) => candidate.name === column)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
   }
 }
 
@@ -705,8 +1110,53 @@ function preferencesFromRow(row: Record<string, unknown>): PlayerPreferences {
     vibrationEnabled: Boolean(row.vibration_enabled),
     reducedMotion: Boolean(row.reduced_motion),
     highContrast: Boolean(row.high_contrast),
-    language: String(row.language ?? "en")
+    language: String(row.language ?? "en"),
+    activityVisibility: (row.activity_visibility === "everyone" || row.activity_visibility === "nobody")
+      ? row.activity_visibility
+      : "friends",
+    friendOnlineNotifications: Boolean(row.friend_online_notifications)
   };
+}
+
+function socialProfileFromRow(row: Record<string, unknown>): SocialProfileRecord {
+  return {
+    id: String(row.id),
+    displayName: String(row.display_name),
+    username: String(row.username),
+    photoUrl: row.photo_url ? String(row.photo_url) : undefined,
+    avatarId: String(row.avatar_id),
+    profileFrameId: String(row.profile_frame_id),
+    level: Number(row.level),
+    rank: String(row.rank),
+    lastActiveAt: Number(row.last_active_at)
+  };
+}
+
+function friendshipFromRow(row: Record<string, unknown>): FriendshipRecord {
+  return {
+    id: String(row.id),
+    requesterUserId: String(row.requester_user_id),
+    addresseeUserId: String(row.addressee_user_id),
+    status: row.status as FriendshipRecord["status"],
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at)
+  };
+}
+
+function gameInviteFromRow(row: Record<string, unknown>): GameInviteRecord {
+  return {
+    id: String(row.id),
+    senderUserId: String(row.sender_user_id),
+    recipientUserId: String(row.recipient_user_id),
+    roomCode: String(row.room_code),
+    status: row.status as GameInviteStatus,
+    createdAt: Number(row.created_at),
+    expiresAt: Number(row.expires_at)
+  };
+}
+
+function friendshipPairKey(firstUserId: string, secondUserId: string): string {
+  return [firstUserId, secondUserId].sort().join(":");
 }
 
 function levelFromXp(xp: number): number {

@@ -57,6 +57,17 @@ interface SocketSeat {
   participantId: string;
 }
 
+export interface SocialRoomInfo {
+  roomCode: string;
+  visibility: RoomVisibility;
+  status: GameState["status"];
+  roomMode: GameState["roomMode"];
+  joinable: boolean;
+  playerCount: number;
+  maxPlayers: number;
+  registeredProfileIds: string[];
+}
+
 type RoomChangedHandler = (roomCode: string) => void | Promise<void>;
 type RoomClosedHandler = (payload: RoomClosedPayload) => void | Promise<void>;
 type RoomDatabase = Pick<GameDatabase, "recordSnapshot" | "deleteRoomSnapshot">;
@@ -408,6 +419,35 @@ export class RoomManager {
   getPublicState(roomCode: string, viewerId?: string): PublicGameState | undefined {
     const room = this.rooms.get(normalizeRoomCode(roomCode));
     return room ? toPublicGameState(room.state, viewerId) : undefined;
+  }
+
+  getSocialRoomInfo(roomCode: string): SocialRoomInfo | undefined {
+    const normalized = normalizeRoomCode(roomCode);
+    const room = this.rooms.get(normalized);
+    if (!room) return undefined;
+    const humanPlayers = room.state.players.filter((player) => !player.isBot);
+    return {
+      roomCode: normalized,
+      visibility: room.visibility,
+      status: room.state.status,
+      roomMode: room.state.roomMode,
+      joinable:
+        room.state.status === "lobby" &&
+        humanPlayers.length < room.state.settings.maxPlayers &&
+        humanPlayers.some((player) => player.connected),
+      playerCount: humanPlayers.length,
+      maxPlayers: room.state.settings.maxPlayers,
+      registeredProfileIds: humanPlayers
+        .map((player) => player.profileId)
+        .filter((profileId): profileId is string => Boolean(profileId))
+    };
+  }
+
+  getSocketProfileId(socketId: string): string | undefined {
+    const seat = this.socketSeats.get(socketId);
+    if (!seat) return undefined;
+    const room = this.rooms.get(seat.roomCode);
+    return room?.state.players.find((player) => player.id === seat.participantId)?.profileId;
   }
 
   listRooms(): RoomListItem[] {

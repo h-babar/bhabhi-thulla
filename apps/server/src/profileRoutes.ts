@@ -148,6 +148,12 @@ function parsePreferences(input: Partial<PlayerPreferences>): Partial<PlayerPref
   for (const key of ["soundEnabled", "musicEnabled", "vibrationEnabled", "reducedMotion", "highContrast"] as const) {
     if (typeof input[key] === "boolean") preferences[key] = input[key];
   }
+  if (input.activityVisibility === "everyone" || input.activityVisibility === "friends" || input.activityVisibility === "nobody") {
+    preferences.activityVisibility = input.activityVisibility;
+  }
+  if (typeof input.friendOnlineNotifications === "boolean") {
+    preferences.friendOnlineNotifications = input.friendOnlineNotifications;
+  }
   if (typeof input.language === "string" && /^[a-z]{2}(?:-[A-Z]{2})?$/.test(input.language)) {
     preferences.language = input.language;
   }

@@ -16,6 +16,7 @@ import { createProfileRouter } from "./profileRoutes.js";
 import { trustedPlayerPayload } from "./auth.js";
 import { RoomManager, normalizeRoomCode } from "./roomManager.js";
 import { VoiceSignalingService } from "./voiceSignaling.js";
+import { FriendsService } from "./friendsService.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,6 +34,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 });
 
 let voiceSignaling: VoiceSignalingService;
+let friendsService: FriendsService;
 const roomManager = new RoomManager(
   db,
   async (roomCode) => {
@@ -43,10 +45,12 @@ const roomManager = new RoomManager(
     voiceSignaling?.closeRoom(payload.roomCode);
     io.to(payload.roomCode).emit("room:closed", payload);
     io.in(payload.roomCode).socketsLeave(payload.roomCode);
+    friendsService?.refreshAllPresence();
     emitRoomList();
   }
 );
 voiceSignaling = new VoiceSignalingService(io, roomManager, config.voice);
+friendsService = new FriendsService(io, db, roomManager, attachIfJoined);
 
 app.use(
   cors({
@@ -356,9 +360,75 @@ io.on("connection", (socket) => {
     ack(voiceSignaling.report(socket, payload));
   });
 
+  socket.on("friends:authenticate", async (payload, ack) => {
+    ack(await friendsService.authenticate(socket, payload.authToken));
+  });
+
+  socket.on("friends:refresh", (ack) => {
+    ack(friendsService.refresh(socket));
+  });
+
+  socket.on("friends:disconnect", (ack) => {
+    ack(friendsService.signOut(socket));
+  });
+
+  socket.on("friends:search", (payload, ack) => {
+    ack(friendsService.search(socket, payload.query));
+  });
+
+  socket.on("friends:request", (payload, ack) => {
+    ack(friendsService.requestFriend(socket, payload.profileId));
+  });
+
+  socket.on("friends:acceptRequest", (payload, ack) => {
+    ack(friendsService.acceptRequest(socket, payload.requestId));
+  });
+
+  socket.on("friends:declineRequest", (payload, ack) => {
+    ack(friendsService.declineRequest(socket, payload.requestId));
+  });
+
+  socket.on("friends:cancelRequest", (payload, ack) => {
+    ack(friendsService.cancelRequest(socket, payload.requestId));
+  });
+
+  socket.on("friends:remove", (payload, ack) => {
+    ack(friendsService.removeFriend(socket, payload.profileId));
+  });
+
+  socket.on("friends:block", (payload, ack) => {
+    ack(friendsService.blockPlayer(socket, payload.profileId));
+  });
+
+  socket.on("friends:unblock", (payload, ack) => {
+    ack(friendsService.unblockPlayer(socket, payload.profileId));
+  });
+
+  socket.on("friends:invite", (payload, ack) => {
+    ack(friendsService.inviteFriend(socket, payload.profileId));
+    emitRoomList();
+  });
+
+  socket.on("friends:acceptInvite", (payload, ack) => {
+    ack(friendsService.acceptInvite(socket, payload.inviteId));
+  });
+
+  socket.on("friends:declineInvite", (payload, ack) => {
+    ack(friendsService.declineInvite(socket, payload.inviteId));
+  });
+
+  socket.on("friends:joinFriend", (payload, ack) => {
+    ack(friendsService.joinFriend(socket, payload.profileId));
+  });
+
+  socket.on("friends:setAway", (payload, ack) => {
+    ack(friendsService.setAway(socket, payload.away));
+  });
+
   socket.on("disconnect", () => {
     voiceSignaling.leaveSocket(socket.id);
     const roomCode = roomManager.disconnectSocket(socket.id);
+    friendsService.disconnect(socket.id);
     if (roomCode) {
       emitRoomList();
     }
@@ -398,6 +468,7 @@ async function broadcastRoom(roomCode: string): Promise<void> {
   }
 
   emitRoomList();
+  friendsService?.refreshRoom(roomCode);
 }
 
 function emitStateToSocket(socketId: string, roomCode: string): void {
@@ -456,6 +527,7 @@ function attachIfJoined(
 
   socket.join(roomCode);
   roomManager.attachSocket(socketId, roomCode, participantId);
+  friendsService?.syncSocket(socketId);
   emitStateToSocket(socketId, roomCode);
 }
 

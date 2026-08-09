@@ -20,6 +20,8 @@ export interface PlayerPreferences {
   reducedMotion: boolean;
   highContrast: boolean;
   language: string;
+  activityVisibility: "everyone" | "friends" | "nobody";
+  friendOnlineNotifications: boolean;
 }
 
 export interface AchievementDefinition {

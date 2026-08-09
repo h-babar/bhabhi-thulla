@@ -4,5 +4,6 @@ export * from "./deck.js";
 export * from "./publicState.js";
 export * from "./profile.js";
 export * from "./rules.js";
+export * from "./social.js";
 export * from "./socket.js";
 export * from "./types.js";

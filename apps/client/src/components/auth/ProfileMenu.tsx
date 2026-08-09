@@ -1,8 +1,9 @@
-import { Award, ChevronDown, History, LogOut, Save, Settings, UserRound } from "lucide-react";
+import { Award, ChevronDown, History, LogOut, Save, Settings, UserRound, UsersRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../../store/authStore.js";
 import { PlayerAvatar } from "./PlayerAvatar.js";
 import { useGameStore } from "../../store/gameStore.js";
+import { useFriendsStore } from "../../store/friendsStore.js";
 
 interface ProfileMenuProps {
   compact?: boolean;
@@ -17,6 +18,8 @@ export function ProfileMenu({ compact = false, onSettings }: ProfileMenuProps) {
   const logout = useAuthStore((state) => state.logout);
   const changePlayer = useAuthStore((state) => state.changePlayer);
   const leaveRoom = useGameStore((state) => state.leaveRoom);
+  const openFriends = useFriendsStore((state) => state.openPanel);
+  const friendBadge = useFriendsStore((state) => state.snapshot.incomingRequests.length + state.snapshot.gameInvites.length);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const current = profile ?? guest;
@@ -51,6 +54,7 @@ export function ProfileMenu({ compact = false, onSettings }: ProfileMenuProps) {
             {profile ? <b>{profile.rank}</b> : <b>Guest</b>}
           </header>
           <button onClick={viewProfile}><UserRound size={17} /> View profile</button>
+          <button onClick={() => runMenuAction(() => openFriends(friendBadge ? "requests" : "online"))}><UsersRound size={17} /> Friends{friendBadge ? <b className="profile-friends-badge">{friendBadge}</b> : null}</button>
           {profile ? <button onClick={viewProfile}><History size={17} /> Match history</button> : null}
           {profile ? <button onClick={viewProfile}><Award size={17} /> Achievements</button> : null}
           {!profile ? <button className="is-accent" onClick={() => runMenuAction(openUpgrade)}><Save size={17} /> Save progress with Google</button> : null}

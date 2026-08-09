@@ -45,6 +45,7 @@ import { RulesModal } from "./RulesModal.js";
 import { ScoreBoard } from "./ScoreBoard.js";
 import { SettingsModal } from "./SettingsModal.js";
 import { ProfileMenu } from "./auth/ProfileMenu.js";
+import { FriendsButton } from "./friends/FriendsButton.js";
 import { PlayerVoiceControl } from "../voice/PlayerVoiceControl.js";
 import { VoiceControls } from "../voice/VoiceControls.js";
 import { useVoiceChat } from "../voice/VoiceChatProvider.js";
@@ -360,6 +361,7 @@ export function GameTable() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <VoiceControls />
+          <FriendsButton compact />
           <button className="secondary-button" onClick={() => setRulesOpen(true)}>
             <BookOpen size={17} />
             Rules
@@ -611,6 +613,7 @@ function LobbyPanel({ state, isHost, playerId, addBot, setReady, startGame, upda
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <FriendsButton label="Invite Friends" openTab="online" />
             {me && !me.isBot ? (
               <button
                 className={clsx(

@@ -281,7 +281,9 @@ function defaultPreferences(): PlayerPreferences {
     vibrationEnabled: true,
     reducedMotion: false,
     highContrast: false,
-    language: "en"
+    language: "en",
+    activityVisibility: "friends",
+    friendOnlineNotifications: false
   };
 }
 
