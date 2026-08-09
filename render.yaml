@@ -3,6 +3,8 @@ services:
     name: bhabhi-thulla-api
     env: node
     plan: free
+    branch: main
+    autoDeployTrigger: commit
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @getaway-cards/shared build && pnpm --filter @getaway-cards/server build
     startCommand: pnpm --filter @getaway-cards/server start
     healthCheckPath: /health
