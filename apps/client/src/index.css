@@ -13372,6 +13372,237 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   }
 }
 
+/* Portrait gameplay zones: secondary tools never enter the protected hand lane. */
+.mobile-tool-trigger,
+.take-action-compact {
+  display: none;
+}
+
+.active-tool-options {
+  display: contents;
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .game-table-main {
+    --mobile-action-bar-height: 4.35rem;
+    --mobile-hand-zone-height: clamp(14rem, 29dvh, 16rem);
+  }
+
+  .active-tool-rail {
+    position: fixed !important;
+    top: auto !important;
+    right: max(0.55rem, env(safe-area-inset-right)) !important;
+    bottom: calc(var(--mobile-hand-zone-height) + max(0.8rem, env(safe-area-inset-bottom))) !important;
+    display: block !important;
+    z-index: 310 !important;
+  }
+
+  .mobile-tool-trigger {
+    display: inline-flex !important;
+    width: 3rem !important;
+    min-width: 3rem !important;
+    min-height: 3rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    padding: 0 !important;
+  }
+
+  .mobile-tool-trigger > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .active-tool-options {
+    position: absolute;
+    right: 0;
+    bottom: 3.45rem;
+    display: grid !important;
+    gap: 0.42rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(0.5rem) scale(0.96);
+    transform-origin: right bottom;
+    pointer-events: none;
+    transition: opacity 150ms ease, transform 150ms ease, visibility 150ms ease;
+  }
+
+  .active-tool-options-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  .active-tool-options .active-tool-button {
+    width: 8.2rem !important;
+    min-width: 8.2rem !important;
+    min-height: 2.8rem !important;
+    justify-content: flex-start !important;
+    gap: 0.55rem !important;
+    border-radius: 0.8rem !important;
+    padding: 0.55rem 0.8rem !important;
+  }
+
+  .active-tool-options .active-tool-button span {
+    display: inline !important;
+  }
+
+  .active-tool-popover,
+  .active-tool-popover-chat {
+    position: fixed !important;
+    inset: auto max(0.5rem, env(safe-area-inset-right)) max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left)) !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: min(72dvh, 34rem) !important;
+    overflow: auto !important;
+    border-radius: 1.15rem !important;
+    z-index: 340 !important;
+  }
+
+  .active-tool-popover-chat {
+    height: min(68dvh, 31rem) !important;
+  }
+
+  .active-hand-dock.hand-tray,
+  .active-hand-dock {
+    left: max(0.5rem, env(safe-area-inset-left)) !important;
+    right: max(0.5rem, env(safe-area-inset-right)) !important;
+    bottom: max(0.25rem, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: var(--mobile-hand-zone-height) !important;
+    transform: none !important;
+    overflow: visible !important;
+    z-index: 230 !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone {
+    box-sizing: border-box;
+    width: 100% !important;
+    height: calc(100% - var(--mobile-action-bar-height) - 0.5rem) !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    padding: 1.35rem max(0.75rem, env(safe-area-inset-right)) 0 max(0.75rem, env(safe-area-inset-left)) !important;
+    transform: none !important;
+    mask-image: none !important;
+    touch-action: pan-y;
+    isolation: isolate;
+  }
+
+  .active-hand-dock .player-hand-safe-zone .card-face {
+    position: relative;
+    width: var(--mobile-hand-card-width, 3rem) !important;
+    margin-left: var(--mobile-hand-card-overlap, -1.1rem) !important;
+    border-radius: 0.58rem !important;
+    z-index: 30;
+  }
+
+  .active-hand-dock .player-hand-safe-zone .card-face:first-child {
+    margin-left: 0 !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone .card-face.ring-4 {
+    z-index: 38 !important;
+  }
+
+  .active-hand-dock .hand-tray-header {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: var(--mobile-action-bar-height) !important;
+    transform: none !important;
+    align-items: stretch !important;
+    padding: 0.28rem 0 !important;
+    z-index: 45 !important;
+  }
+
+  .active-hand-dock .hand-tray-header > div:last-child,
+  .active-hand-dock .turn-controls {
+    display: grid !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.08fr) minmax(4.2rem, 0.7fr) !important;
+    align-items: stretch !important;
+    gap: 0.35rem !important;
+    border-radius: 1rem !important;
+    padding: 0.32rem !important;
+  }
+
+  .turn-controls .turn-hint,
+  .turn-controls .auto-play-action,
+  .turn-controls .quit-action {
+    display: none !important;
+  }
+
+  .turn-controls .take-card-action,
+  .turn-controls .play-card-action,
+  .turn-controls .sort-card-action {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 3.05rem !important;
+    justify-content: center !important;
+    gap: 0.35rem !important;
+    overflow: hidden;
+    padding: 0.55rem 0.45rem !important;
+    font-size: clamp(0.68rem, 3.25vw, 0.8rem) !important;
+    line-height: 1 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .turn-controls .take-action-full,
+  .turn-controls .sort-mode-label {
+    display: none !important;
+  }
+
+  .turn-controls .take-action-compact {
+    display: inline !important;
+  }
+
+  .turn-controls:not(:has(.take-card-action)) {
+    grid-template-columns: minmax(0, 1fr) minmax(4.6rem, 0.7fr) !important;
+  }
+
+  .turn-controls:not(:has(.take-card-action)) .play-card-action {
+    grid-column: 1;
+  }
+
+  .turn-controls:not(:has(.take-card-action)) .sort-card-action {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 340px) and (orientation: portrait) {
+  .game-table-main {
+    --mobile-action-bar-height: 4.05rem;
+  }
+
+  .turn-controls .take-card-action,
+  .turn-controls .play-card-action,
+  .turn-controls .sort-card-action {
+    min-height: 2.8rem !important;
+    font-size: 0.65rem !important;
+  }
+
+  .turn-controls svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+}
+
 @media (max-width: 760px) {
   .voice-control-cluster {
     min-height: 2.45rem;
@@ -14649,5 +14880,128 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   .active-hand-dock .hand-tray-header .seat-control-actions > button:last-child {
     min-height: 2.45rem !important;
     padding-inline: 0.85rem !important;
+  }
+}
+
+/* Final portrait contract. Keep this last so legacy table tuning cannot reclaim the hand lane. */
+@media (max-width: 600px) and (orientation: portrait) {
+  :root {
+    --mobile-action-bar-height: 4.35rem;
+    --mobile-hand-zone-height: clamp(14rem, 29dvh, 16rem);
+  }
+
+  .active-tool-rail {
+    top: auto !important;
+    right: max(0.55rem, env(safe-area-inset-right)) !important;
+    bottom: calc(var(--mobile-hand-zone-height) + max(0.8rem, env(safe-area-inset-bottom))) !important;
+    display: block !important;
+    z-index: 310 !important;
+  }
+
+  .mobile-tool-trigger {
+    display: inline-flex !important;
+  }
+
+  .active-hand-dock.hand-tray,
+  .active-hand-dock {
+    left: max(0.5rem, env(safe-area-inset-left)) !important;
+    right: max(0.5rem, env(safe-area-inset-right)) !important;
+    bottom: max(0.25rem, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: var(--mobile-hand-zone-height) !important;
+    transform: none !important;
+    overflow: visible !important;
+    z-index: 230 !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone {
+    width: 100% !important;
+    height: calc(100% - var(--mobile-action-bar-height) - 0.5rem) !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    padding: 1.35rem max(0.75rem, env(safe-area-inset-right)) 0 max(0.75rem, env(safe-area-inset-left)) !important;
+    transform: none !important;
+    mask-image: none !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone .card-face {
+    width: var(--mobile-hand-card-width, 3rem) !important;
+    margin-left: var(--mobile-hand-card-overlap, -1.1rem) !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone .card-face:first-child {
+    margin-left: 0 !important;
+  }
+
+  .active-hand-dock .hand-tray-header {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: var(--mobile-action-bar-height) !important;
+    transform: none !important;
+    padding: 0.28rem 0 !important;
+  }
+
+  .active-hand-dock .hand-tray-header > div:last-child,
+  .active-hand-dock .turn-controls {
+    display: grid !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.08fr) minmax(4.2rem, 0.7fr) !important;
+    align-items: stretch !important;
+    gap: 0.35rem !important;
+    padding: 0.32rem !important;
+  }
+
+  .active-hand-dock .hand-tray-header .seat-control-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .active-hand-dock .hand-tray-header .seat-control-actions > button,
+  .active-hand-dock .hand-tray-header .seat-control-actions > button:last-child {
+    display: inline-flex !important;
+  }
+
+  .active-hand-dock .hand-tray-header > .seat-control-actions > button.primary-button:last-child {
+    display: inline-flex !important;
+    min-width: 7.8rem !important;
+  }
+
+  .turn-controls .turn-hint,
+  .turn-controls .auto-play-action,
+  .turn-controls .quit-action {
+    display: none !important;
+  }
+
+  .turn-controls .take-card-action,
+  .turn-controls .play-card-action,
+  .turn-controls .sort-card-action {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 3.05rem !important;
+  }
+
+  .turn-controls:not(:has(.take-card-action)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.78fr) !important;
+  }
+
+  .turn-controls:not(:has(.take-card-action)) .play-card-action {
+    grid-column: 1 !important;
+  }
+
+  .turn-controls:not(:has(.take-card-action)) .sort-card-action {
+    grid-column: 2 !important;
   }
 }

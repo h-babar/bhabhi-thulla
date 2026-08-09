@@ -13,6 +13,7 @@ interface CardViewProps {
   tableCard?: boolean;
   fanIndex?: number;
   fanTotal?: number;
+  mobileFan?: boolean;
   onClick?: () => void;
   onDoubleClick?: () => void;
   onDragPlay?: () => void;
@@ -39,6 +40,7 @@ export function CardView({
   tableCard = false,
   fanIndex,
   fanTotal,
+  mobileFan = false,
   onClick,
   onDoubleClick,
   onDragPlay
@@ -49,11 +51,19 @@ export function CardView({
   const hasFan = fanIndex !== undefined && fanTotal !== undefined && fanTotal > 1;
   const fanMid = hasFan ? (fanTotal - 1) / 2 : 0;
   const fanOffset = hasFan ? fanIndex - fanMid : 0;
-  const fanSpread = hasFan ? Math.min(5.2, 44 / Math.max(1, fanTotal)) : 0;
+  const fanSpread = hasFan
+    ? mobileFan
+      ? Math.min(1.25, 14 / Math.max(1, fanTotal))
+      : Math.min(5.2, 44 / Math.max(1, fanTotal))
+    : 0;
   const fanRotate = Math.max(-14, Math.min(14, fanOffset * fanSpread));
-  const fanDrop = hasFan ? Math.min(18, Math.abs(fanOffset) * 1.18) : 0;
+  const fanDrop = hasFan
+    ? mobileFan
+      ? Math.min(9, Math.abs(fanOffset) * 0.62)
+      : Math.min(18, Math.abs(fanOffset) * 1.18)
+    : 0;
   const fanScale = hasFan && fanTotal > 12 ? Math.max(0.92, 1 - (fanTotal - 12) * 0.012) : 1;
-  const baseRotate = tilt + fanRotate;
+  const baseRotate = mobileFan ? tilt * 0.25 + fanRotate : tilt + fanRotate;
 
   if (faceDown || !card) {
     return (

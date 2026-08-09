@@ -18,6 +18,7 @@ import {
   Copy,
   Crown,
   Eye,
+  Ellipsis,
   Hand,
   Home,
   LogOut,
@@ -520,7 +521,9 @@ export function GameTable() {
                 </div>
               ) : (
                 <div
-                  className="hand-scroll hand-fan flex min-h-[5.75rem] gap-1.5 overflow-x-auto pb-1.5 pt-2 sm:min-h-[6.35rem] sm:gap-2"
+                  className="player-hand-safe-zone hand-scroll hand-fan flex min-h-[5.75rem] gap-1.5 overflow-x-auto pb-1.5 pt-2 sm:min-h-[6.35rem] sm:gap-2"
+                  data-card-count={displayedHand.length}
+                  aria-label="Your cards"
                   style={responsiveHandStyle}
                 >
                   {displayedHand.map((card, index) => (
@@ -530,6 +533,7 @@ export function GameTable() {
                       compact={displayedHand.length > 10}
                       fanIndex={index}
                       fanTotal={displayedHand.length}
+                      mobileFan={viewportWidth <= 600}
                       selected={selectedIds.includes(card.id)}
                       playable={isMyTurn && isCardPlayableForState(state, hand, card)}
                       disabled={!isMyTurn || !isCardPlayableForState(state, hand, card)}
@@ -1053,6 +1057,7 @@ function ActiveTableTools({
   state: PublicGameState;
 }) {
   const [seenChatCount, setSeenChatCount] = useState(state.chatMessages.length);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const unreadChatCount = Math.max(0, state.chatMessages.length - seenChatCount);
   const tools: Array<{ key: Exclude<ActiveTableTool, "none">; label: string; icon: ReactNode }> = [
     { key: "odds", label: "Odds", icon: <BarChart3 size={17} /> },
@@ -1067,6 +1072,12 @@ function ActiveTableTools({
     }
   }, [activeTool, state.chatMessages.length]);
 
+  useEffect(() => {
+    if (activeTool !== "none") {
+      setMobileMenuOpen(false);
+    }
+  }, [activeTool]);
+
   if (typeof document === "undefined") {
     return null;
   }
@@ -1074,25 +1085,49 @@ function ActiveTableTools({
   return createPortal(
     <div className="active-table-tools pointer-events-none absolute inset-0 z-[65]">
       <div className="active-tool-rail pointer-events-auto" onPointerDown={(event) => event.stopPropagation()}>
-        {tools.map((tool) => (
-          <button
-            key={tool.key}
-            type="button"
-            className={clsx("active-tool-button", activeTool === tool.key && "active-tool-button-active")}
-            onClick={() => onChange(activeTool === tool.key ? "none" : tool.key)}
-            aria-label={`Open ${tool.label}`}
-            aria-expanded={activeTool === tool.key}
-            aria-controls={activeTool === tool.key ? "active-table-panel" : undefined}
-          >
-            {tool.icon}
-            <span>{tool.label}</span>
-            {tool.key === "chat" && unreadChatCount > 0 ? (
-              <b className="active-tool-unread" aria-label={`${unreadChatCount} unread messages`}>
-                {Math.min(99, unreadChatCount)}
-              </b>
-            ) : null}
-          </button>
-        ))}
+        <button
+          type="button"
+          className={clsx("active-tool-button mobile-tool-trigger", mobileMenuOpen && "active-tool-button-active")}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          aria-label="Open match tools"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-table-tools"
+        >
+          <Ellipsis size={20} />
+          <span>More</span>
+          {unreadChatCount > 0 ? (
+            <b className="active-tool-unread" aria-label={`${unreadChatCount} unread messages`}>
+              {Math.min(99, unreadChatCount)}
+            </b>
+          ) : null}
+        </button>
+        <div
+          id="mobile-table-tools"
+          className={clsx("active-tool-options", mobileMenuOpen && "active-tool-options-open")}
+        >
+          {tools.map((tool) => (
+            <button
+              key={tool.key}
+              type="button"
+              className={clsx("active-tool-button", activeTool === tool.key && "active-tool-button-active")}
+              onClick={() => {
+                onChange(activeTool === tool.key ? "none" : tool.key);
+                setMobileMenuOpen(false);
+              }}
+              aria-label={`Open ${tool.label}`}
+              aria-expanded={activeTool === tool.key}
+              aria-controls={activeTool === tool.key ? "active-table-panel" : undefined}
+            >
+              {tool.icon}
+              <span>{tool.label}</span>
+              {tool.key === "chat" && unreadChatCount > 0 ? (
+                <b className="active-tool-unread" aria-label={`${unreadChatCount} unread messages`}>
+                  {Math.min(99, unreadChatCount)}
+                </b>
+              ) : null}
+            </button>
+          ))}
+        </div>
       </div>
 
       <AnimatePresence>
@@ -1586,33 +1621,34 @@ function TurnControls({
       : "Lead any card";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
-      <span className="rounded-full bg-slate-950/5 px-2.5 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-600 dark:bg-white/10 dark:text-slate-300">
+    <div className="turn-controls flex flex-wrap items-center justify-end gap-1.5">
+      <span className="turn-hint rounded-full bg-slate-950/5 px-2.5 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-600 dark:bg-white/10 dark:text-slate-300">
         {hint} / {legalCount} legal
       </span>
       {takeTarget ? (
         <button
-          className="secondary-button border-amber-300/35 bg-amber-300/10 px-3 py-2 text-amber-100"
+          className="take-card-action secondary-button border-amber-300/35 bg-amber-300/10 px-3 py-2 text-amber-100"
           onClick={onTake}
           title={"Take all " + takeTarget.cardCount + " cards from " + takeTarget.name}
         >
           <Hand size={16} />
-          Take {takeTarget.name}'s {takeTarget.cardCount}
+          <span className="take-action-full">Take {takeTarget.name}'s {takeTarget.cardCount}</span>
+          <span className="take-action-compact">Take {takeTarget.cardCount}</span>
         </button>
       ) : null}
-      <button className="primary-button px-4 py-2" disabled={!canPlaySelected} onClick={onPlay}>
+      <button className="play-card-action primary-button px-4 py-2" disabled={!canPlaySelected} onClick={onPlay}>
         <Sparkles size={17} />
         Play Card
       </button>
-      <button className="secondary-button px-3 py-2" onClick={onSort}>
+      <button className="sort-card-action secondary-button px-3 py-2" onClick={onSort}>
         <RotateCcw size={16} />
-        Sort {sortMode === "deal" ? "" : sortMode}
+        Sort <span className="sort-mode-label">{sortMode === "deal" ? "" : sortMode}</span>
       </button>
-      <button className="secondary-button px-3 py-2" onClick={onAutoPlay} title="Let the server play this seat until you return">
+      <button className="auto-play-action secondary-button px-3 py-2" onClick={onAutoPlay} title="Let the server play this seat until you return">
         <Bot size={16} />
         Auto Play
       </button>
-      <button className="secondary-button px-3 py-2" onClick={onQuit}>
+      <button className="quit-action secondary-button px-3 py-2" onClick={onQuit}>
         <LogOut size={16} />
         Quit
       </button>
@@ -2225,11 +2261,11 @@ function getResponsiveHandStyle(cardCount: number, viewportWidth: number): CSSPr
     return {};
   }
 
-  const availableWidth = Math.max(220, viewportWidth - 48);
-  const cardWidth = Math.min(52, Math.max(40, viewportWidth * 0.125));
+  const availableWidth = Math.max(240, viewportWidth - 50);
+  const cardWidth = Math.min(58, Math.max(44, viewportWidth * 0.132));
   const visibleStep = cardCount === 1
     ? cardWidth
-    : Math.min(cardWidth * 0.82, (availableWidth - cardWidth) / (cardCount - 1));
+    : Math.min(cardWidth * 0.8, (availableWidth - cardWidth) / (cardCount - 1));
 
   return {
     "--mobile-hand-card-width": `${cardWidth}px`,
