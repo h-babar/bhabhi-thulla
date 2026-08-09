@@ -1,5 +1,6 @@
 import type {
   AccountType,
+  ActiveGameSummary,
   BasicResponse,
   BotDifficulty,
   ChatMessage,
@@ -82,6 +83,7 @@ interface GameStore {
   playerId?: string;
   roomCode?: string;
   state?: PublicGameState;
+  activeGame?: ActiveGameSummary;
   rooms: RoomListItem[];
   error?: string;
   theme: ThemeMode;
@@ -132,6 +134,9 @@ interface GameStore {
   updateRoomSettings: (settings: Partial<GameSettings>) => void;
   quitGame: (replaceWithBot?: boolean) => void;
   reclaimSeat: () => void;
+  rejoinActiveGame: () => void;
+  takeControl: () => void;
+  setAutoPlay: (enabled: boolean) => void;
   leaveRoom: () => void;
   clearError: () => void;
   enterRoomFromSocial: (response: RoomJoinResponse) => void;
@@ -163,6 +168,7 @@ export const useGameStore = create<GameStore>()(
           roomCode: undefined,
           playerId: undefined,
           state: undefined,
+          activeGame: undefined,
           error: message
         });
       };
@@ -193,6 +199,7 @@ export const useGameStore = create<GameStore>()(
           playerId: response.playerId,
           sessionId: response.sessionId ?? get().sessionId,
           state: response.state,
+          activeGame: undefined,
           screen: "room",
           error: undefined
         });
@@ -219,7 +226,16 @@ export const useGameStore = create<GameStore>()(
 
           socket.on("connect", () => {
             set({ socketStatus: "online", error: undefined });
-            const { roomCode, sessionId, username, avatar } = get();
+            const {
+              roomCode,
+              sessionId,
+              username,
+              avatar,
+              accountType,
+              identityId,
+              authToken,
+              rankBadge
+            } = get();
             socket?.emit("room:list", (rooms) => set({ rooms }));
             if (roomCode && sessionId) {
               socket?.emit(
@@ -228,9 +244,28 @@ export const useGameStore = create<GameStore>()(
                   roomCode,
                   sessionId,
                   username,
-                  avatar
+                  avatar,
+                  guestId: accountType === "guest" ? identityId : undefined,
+                  accountType,
+                  authToken,
+                  profileId: accountType === "registered" ? identityId : undefined,
+                  rankBadge
                 },
                 (response) => handleJoinResponse(response, { autoReconnect: true })
+              );
+            } else if (accountType === "registered" && authToken) {
+              socket?.emit(
+                "player:findActiveGame",
+                {
+                  username,
+                  avatar,
+                  accountType,
+                  authToken,
+                  profileId: identityId
+                },
+                (response) => {
+                  if (response.ok) set({ activeGame: response.game });
+                }
               );
             }
           });
@@ -416,6 +451,24 @@ export const useGameStore = create<GameStore>()(
             authToken: identity.authToken,
             rankBadge: identity.rankBadge
           });
+          if (identity.accountType === "registered" && identity.authToken) {
+            ensureSocket().emit(
+              "player:findActiveGame",
+              {
+                username: identity.username,
+                avatar: identity.avatar,
+                accountType: identity.accountType,
+                authToken: identity.authToken,
+                profileId: identity.identityId,
+                rankBadge: identity.rankBadge
+              },
+              (response) => {
+                if (response.ok) set({ activeGame: response.game });
+              }
+            );
+          } else {
+            set({ activeGame: undefined });
+          }
         },
         setTheme: (theme) => {
           applyThemeToDocument(theme);
@@ -552,7 +605,8 @@ export const useGameStore = create<GameStore>()(
             {
               roomCode,
               cardId: cardIds[0]!,
-              declaredSuit
+              declaredSuit,
+              turnId: get().state?.turnId
             },
             (response) => handleBasic(response, "none")
           );
@@ -562,7 +616,7 @@ export const useGameStore = create<GameStore>()(
           if (!roomCode) return;
           ensureSocket().emit(
             "game:takeNextPlayerCards",
-            { roomCode },
+            { roomCode, turnId: get().state?.turnId },
             (response) => handleBasic(response, "draw")
           );
         },
@@ -573,6 +627,7 @@ export const useGameStore = create<GameStore>()(
             "game:move",
             {
               roomCode,
+              turnId: get().state?.turnId,
               move: {
                 type: "draw"
               }
@@ -651,6 +706,30 @@ export const useGameStore = create<GameStore>()(
               error: undefined
             });
           });
+        },
+        rejoinActiveGame: () => {
+          if (get().accountType !== "registered" || !get().authToken) return;
+          ensureSocket().emit("player:rejoinActive", profilePayload(), (response) => {
+            handleJoinResponse(response);
+          });
+        },
+        takeControl: () => {
+          const roomCode = get().roomCode;
+          if (!roomCode) return;
+          ensureSocket().emit(
+            "player:takeControl",
+            { roomCode, turnId: get().state?.turnId },
+            (response) => handleBasic(response)
+          );
+        },
+        setAutoPlay: (enabled) => {
+          const roomCode = get().roomCode;
+          if (!roomCode) return;
+          ensureSocket().emit(
+            "player:setAutoPlay",
+            { roomCode, turnId: get().state?.turnId, enabled },
+            (response) => handleBasic(response)
+          );
         },
         leaveRoom: () => {
           stopBackgroundMusic();

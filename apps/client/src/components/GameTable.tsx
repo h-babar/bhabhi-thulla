@@ -59,6 +59,8 @@ export function GameTable() {
   const leaveRoom = useGameStore((store) => store.leaveRoom);
   const quitGame = useGameStore((store) => store.quitGame);
   const reclaimSeat = useGameStore((store) => store.reclaimSeat);
+  const takeControl = useGameStore((store) => store.takeControl);
+  const setAutoPlay = useGameStore((store) => store.setAutoPlay);
   const addBot = useGameStore((store) => store.addBot);
   const setReady = useGameStore((store) => store.setReady);
   const startGame = useGameStore((store) => store.startGame);
@@ -170,6 +172,8 @@ export function GameTable() {
   const isMyTurn =
     state.activePlayerId === playerId &&
     state.status === "playing" &&
+    me?.controlState !== "temporary-bot" &&
+    Boolean(me?.connected) &&
     !isCelebratingWin &&
     !isDealPhase &&
     !isTableRevealPhase;
@@ -473,7 +477,14 @@ export function GameTable() {
                         : `${hand.length} card${hand.length === 1 ? "" : "s"}`}
                   </h2>
                 </div>
-                {!isSpectator && !isDealPhase && !isTableRevealPhase ? (
+                {me?.controlState === "temporary-bot" ? (
+                  <SeatControlActions
+                    disconnected={!me.connected}
+                    reconnecting={me.connectionState === "reconnecting"}
+                    autoPlayEnabled={me.autoPlayEnabled}
+                    onTakeControl={takeControl}
+                  />
+                ) : !isSpectator && !isDealPhase && !isTableRevealPhase ? (
                   <TurnControls
                     isMyTurn={isMyTurn}
                     canPlaySelected={canPlaySelected}
@@ -487,6 +498,7 @@ export function GameTable() {
                     onPlay={playSelected}
                     onTake={() => setTakeCardsOpen(true)}
                     onSort={cycleHandSort}
+                    onAutoPlay={() => setAutoPlay(true)}
                     onQuit={() => setQuitOpen(true)}
                   />
                 ) : isDealPhase ? (
@@ -806,7 +818,15 @@ function SeatIdentity({
   const voiceParticipant = voice.participants.find((participant) => participant.playerId === player.id);
   const voiceSpeaking = Boolean(voiceParticipant?.isSpeaking && !voiceParticipant.isLocallyMuted);
   const statusText = !player.connected
-    ? "Disconnected"
+    ? "Disconnected • Bot Playing"
+    : player.connectionState === "reconnecting"
+      ? "Reconnected • Bot Playing"
+      : player.controlState === "temporary-bot"
+        ? player.autoPlayEnabled
+          ? "Auto Play ON"
+          : "AFK • Auto Playing"
+        : player.controlState === "auto-play"
+          ? "AFK • Card auto-played"
     : active
       ? player.isBot
         ? "Thinking..."
@@ -1539,6 +1559,7 @@ interface TurnControlsProps {
   onPlay: () => void;
   onTake: () => void;
   onSort: () => void;
+  onAutoPlay: () => void;
   onQuit: () => void;
 }
 
@@ -1553,6 +1574,7 @@ function TurnControls({
   onPlay,
   onTake,
   onSort,
+  onAutoPlay,
   onQuit
 }: TurnControlsProps) {
   const hint = !isMyTurn
@@ -1586,10 +1608,47 @@ function TurnControls({
         <RotateCcw size={16} />
         Sort {sortMode === "deal" ? "" : sortMode}
       </button>
+      <button className="secondary-button px-3 py-2" onClick={onAutoPlay} title="Let the server play this seat until you return">
+        <Bot size={16} />
+        Auto Play
+      </button>
       <button className="secondary-button px-3 py-2" onClick={onQuit}>
         <LogOut size={16} />
         Quit
       </button>
+    </div>
+  );
+}
+
+function SeatControlActions({
+  disconnected,
+  reconnecting,
+  autoPlayEnabled,
+  onTakeControl
+}: {
+  disconnected: boolean;
+  reconnecting: boolean;
+  autoPlayEnabled: boolean;
+  onTakeControl: () => void;
+}) {
+  return (
+    <div className="seat-control-actions flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-3 py-2">
+      <span className="flex items-center gap-2 text-xs font-black text-amber-100">
+        {disconnected ? <WifiOff size={15} /> : <Bot size={15} />}
+        {disconnected
+          ? "Seat reserved • Bot playing"
+          : reconnecting
+            ? "Reconnected • Bot is playing for you"
+            : autoPlayEnabled
+              ? "Auto Play ON"
+              : "Bot is playing for you"}
+      </span>
+      {!disconnected ? (
+        <button className="primary-button px-4 py-2" onClick={onTakeControl}>
+          <Play size={16} />
+          Take Control
+        </button>
+      ) : null}
     </div>
   );
 }

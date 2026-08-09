@@ -123,7 +123,7 @@ Bhabhi Thulla uses a standard 52-card deck. The server shuffles the deck and dea
 
 Each escaped player earns 1 escape point. The first player to reach the target escape score wins the match. The default target is 5.
 
-The backend validates every move, controls the deck, enforces follow-suit, resolves Thulla pickups, and records round summaries. On the first timeout, the next player gives one card as Timeout Dhulla. Missing two turns in a row declares that seat Bhabhi and replaces the player with a bot so the game can continue.
+The backend validates every move, controls the deck, enforces follow-suit, resolves Thulla pickups, and records round summaries. A first timeout auto-plays the lowest legal card. Repeated inactivity enables temporary server-side bot control while preserving the player's identity, hand, seat, score, and reconnect rights.
 
 ## Tournament Mode
 

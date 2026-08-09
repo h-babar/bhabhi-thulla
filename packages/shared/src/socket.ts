@@ -79,6 +79,11 @@ export interface AddBotPayload {
 
 export interface RoomActionPayload {
   roomCode: string;
+  turnId?: string;
+}
+
+export interface AutoPlayPayload extends RoomActionPayload {
+  enabled: boolean;
 }
 
 export interface PlayerReadyPayload extends RoomActionPayload {
@@ -117,6 +122,19 @@ export interface RoomJoinResponse {
   sessionId?: string;
   state?: PublicGameState;
   error?: string;
+}
+
+export interface ActiveGameSummary {
+  roomCode: string;
+  status: PublicGameState["status"];
+  playerCount: number;
+  maxPlayers: number;
+  controlState: PublicGameState["players"][number]["controlState"];
+  connectionState: PublicGameState["players"][number]["connectionState"];
+}
+
+export interface ActiveGameResponse extends BasicResponse {
+  game?: ActiveGameSummary;
 }
 
 export interface BasicResponse {
@@ -253,6 +271,10 @@ export interface ClientToServerEvents {
   "room:addBot": (payload: AddBotPayload, ack: (response: BasicResponse) => void) => void;
   "room:quit": (payload: QuitRoomPayload, ack: (response: QuitRoomResponse) => void) => void;
   "room:reclaimSeat": (payload: RoomActionPayload, ack: (response: QuitRoomResponse) => void) => void;
+  "player:takeControl": (payload: RoomActionPayload, ack: (response: BasicResponse) => void) => void;
+  "player:setAutoPlay": (payload: AutoPlayPayload, ack: (response: BasicResponse) => void) => void;
+  "player:findActiveGame": (payload: PlayerProfilePayload, ack: (response: ActiveGameResponse) => void) => void;
+  "player:rejoinActive": (payload: PlayerProfilePayload, ack: (response: RoomJoinResponse) => void) => void;
   "game:start": (payload: RoomActionPayload, ack: (response: BasicResponse) => void) => void;
   "game:nextRound": (payload: RoomActionPayload, ack: (response: BasicResponse) => void) => void;
   "game:move": (payload: MovePayload, ack: (response: BasicResponse) => void) => void;

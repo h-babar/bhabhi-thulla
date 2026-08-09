@@ -22,7 +22,15 @@ export function PlayerBadge({ player, active = false, host = false, compact = fa
       ? "Ready"
       : "Not ready";
   const statusText = !player.connected
-    ? "Disconnected"
+    ? "Disconnected • Bot Playing"
+    : player.connectionState === "reconnecting"
+      ? "Reconnected • Bot Playing"
+      : player.controlState === "temporary-bot"
+        ? player.autoPlayEnabled
+          ? "Auto Play ON"
+          : "AFK • Auto Playing"
+        : player.controlState === "auto-play"
+          ? "AFK • Card auto-played"
     : compact
       ? compactStatus
       : player.handCount === 0

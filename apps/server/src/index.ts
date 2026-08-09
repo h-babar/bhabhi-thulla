@@ -215,6 +215,47 @@ io.on("connection", (socket) => {
     emitRoomList();
   });
 
+  socket.on("player:takeControl", (payload, ack) => {
+    const seat = requireSeat(socket.id, payload.roomCode);
+    if (!seat.ok) {
+      ack(seat);
+      return;
+    }
+
+    ack(roomManager.takeControl(payload.roomCode, seat.participantId, payload.turnId));
+  });
+
+  socket.on("player:setAutoPlay", (payload, ack) => {
+    const seat = requireSeat(socket.id, payload.roomCode);
+    if (!seat.ok) {
+      ack(seat);
+      return;
+    }
+
+    ack(roomManager.setAutoPlay(payload.roomCode, seat.participantId, payload.enabled));
+  });
+
+  socket.on("player:findActiveGame", async (payload, ack) => {
+    try {
+      const trusted = await trustedPlayerPayload(db, payload);
+      if (trusted.accountType !== "registered" || !trusted.profileId) {
+        ack({ ok: false, error: "Sign in to recover games across devices." });
+        return;
+      }
+      ack({ ok: true, game: roomManager.findActiveGame(trusted.profileId) });
+    } catch (error) {
+      ack({ ok: false, error: error instanceof Error ? error.message : "Could not check active games." });
+    }
+  });
+
+  socket.on("player:rejoinActive", async (payload, ack) => {
+    await handlePlayerEntry(
+      payload,
+      ack,
+      (trusted) => roomManager.rejoinActive({ ...payload, ...trusted })
+    );
+  });
+
   socket.on("game:start", (payload, ack) => {
     const seat = requireSeat(socket.id, payload.roomCode);
     if (!seat.ok) {
@@ -255,7 +296,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    ack(roomManager.performMove(payload.roomCode, seat.participantId, payload.move));
+    ack(roomManager.performMove(payload.roomCode, seat.participantId, payload.move, payload.turnId));
   });
 
   socket.on("game:takeNextPlayerCards", (payload, ack) => {
@@ -265,7 +306,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    ack(withGameError(roomManager.takeNextPlayerCards(payload.roomCode, seat.participantId)));
+    ack(withGameError(roomManager.takeNextPlayerCards(payload.roomCode, seat.participantId, payload.turnId)));
   });
 
   socket.on("playCard", (payload, ack) => {
@@ -279,7 +320,7 @@ io.on("connection", (socket) => {
       type: "play",
       cardIds: [payload.cardId],
       declaredSuit: payload.declaredSuit
-    })));
+    }, payload.turnId)));
   });
 
   socket.on("settings:update", (payload, ack) => {

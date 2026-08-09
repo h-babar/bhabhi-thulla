@@ -14623,3 +14623,31 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     transform: scale(0.78) !important;
   }
 }
+
+/* AFK recovery must remain actionable even where compact hand controls hide their last button. */
+.active-hand-dock .hand-tray-header .seat-control-actions {
+  display: flex !important;
+  width: max-content !important;
+  max-width: calc(100vw - 1rem) !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+}
+
+.active-hand-dock .hand-tray-header .seat-control-actions > button:last-child {
+  display: inline-flex !important;
+  flex-shrink: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .active-hand-dock .hand-tray-header .seat-control-actions > span {
+    max-width: 9.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .active-hand-dock .hand-tray-header .seat-control-actions > button:last-child {
+    min-height: 2.45rem !important;
+    padding-inline: 0.85rem !important;
+  }
+}

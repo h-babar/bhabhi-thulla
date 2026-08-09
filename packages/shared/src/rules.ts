@@ -56,6 +56,10 @@ export function createPlayer(input: NewPlayerInput, now = Date.now()): PlayerSta
     score: 0,
     roundWins: 0,
     connected: true,
+    connectionState: "online",
+    controlState: "human",
+    autoPlayEnabled: false,
+    consecutiveTimeouts: 0,
     ready: input.isBot ?? false,
     isBot: input.isBot ?? false,
     botDifficulty: input.botDifficulty,
@@ -63,6 +67,13 @@ export function createPlayer(input: NewPlayerInput, now = Date.now()): PlayerSta
     profileId: input.profileId,
     rankBadge: input.rankBadge,
     missedTurnStreak: 0,
+    reliability: {
+      turnTimeouts: 0,
+      temporaryBotActivations: 0,
+      disconnects: 0,
+      reconnects: 0,
+      abandonedMatches: 0
+    },
     joinedAt: now,
     lastSeenAt: now
   };
@@ -146,6 +157,10 @@ export function startRound(
     hand: [],
     ready: player.isBot,
     connected: player.isBot ? true : player.connected,
+    connectionState: player.isBot || player.connected ? "online" : "disconnected",
+    controlState: player.isBot || player.connected ? "human" : "temporary-bot",
+    autoPlayEnabled: false,
+    consecutiveTimeouts: 0,
     missedTurnStreak: 0
   }));
 
@@ -375,6 +390,12 @@ export function applyTakeNextPlayerCards(
   releasedPlayer.hand = [];
   player.hand = sortHand([...player.hand, ...transferredCards]);
   player.missedTurnStreak = 0;
+  player.consecutiveTimeouts = 0;
+  if (!player.isBot) {
+    player.connectionState = player.connected ? "online" : "disconnected";
+    player.controlState = "human";
+    player.autoPlayEnabled = false;
+  }
   next.lastTrick = undefined;
   next.cardTakeUsedById = player.id;
   next.recentPickup = {
@@ -429,6 +450,12 @@ export function applyMove(
 
   player.hand = sortHand(player.hand.filter((candidate) => candidate.id !== card.id));
   player.missedTurnStreak = 0;
+  player.consecutiveTimeouts = 0;
+  if (!player.isBot) {
+    player.controlState = "human";
+    player.connectionState = player.connected ? "online" : "disconnected";
+    player.autoPlayEnabled = false;
+  }
   next.cardTakeUsedById = undefined;
   pruneRecentPickup(next, playerId);
 
@@ -488,84 +515,88 @@ export function applyPenalty(
   now = Date.now(),
   rng: RandomSource = Math.random
 ): GameState {
-  const next = cloneGameState(state);
-  const player = next.players.find((candidate) => candidate.id === playerId);
-  if (!player || next.status !== "playing" || next.activePlayerId !== playerId) {
+  void reason;
+  void rng;
+  return applyTimeoutAutoPlay(state, playerId, 2, now);
+}
+
+export function applyTimeoutAutoPlay(
+  state: GameState,
+  playerId: string,
+  takeoverThreshold = 2,
+  now = Date.now()
+): GameState {
+  const player = state.players.find((candidate) => candidate.id === playerId);
+  const legalCards = getPlayableCards(state, playerId);
+  if (!player || legalCards.length === 0) {
+    return cloneGameState(state);
+  }
+
+  const timeoutCount = Math.max(player.consecutiveTimeouts ?? 0, player.missedTurnStreak ?? 0) + 1;
+  const card = chooseTimeoutCard(legalCards);
+  if (!card) {
+    return cloneGameState(state);
+  }
+
+  const next = applyMove(state, playerId, { type: "play", cardIds: [card.id] }, now);
+  const updatedPlayer = next.players.find((candidate) => candidate.id === playerId);
+  if (!updatedPlayer) {
     return next;
   }
 
-  if (next.dealEndsAt && now < next.dealEndsAt) {
+  if (updatedPlayer.isBot) {
+    appendHistory(next, {
+      type: "bot",
+      playerId,
+      message: `${updatedPlayer.username} recovered with a legal automatic play.`
+    }, now);
     return next;
   }
 
-  if (next.lastTrick && now - next.lastTrick.resolvedAt < TRICK_REVEAL_MS) {
-    return next;
-  }
-
-  player.missedTurnStreak = (player.missedTurnStreak ?? 0) + 1;
-
-  if (player.missedTurnStreak >= 2) {
-    declareTimeoutBhabhi(next, player, reason, now);
-    setTurnClock(next, now);
-    next.updatedAt = now;
-    void rng;
-    return next;
-  }
-
-  const giver = nextPlayerMatching(next, playerId, (candidate) =>
-    candidate.id !== playerId && candidate.hand.length > 0
-  );
-  const giftCard = giver ? chooseTimeoutCard(giver.hand) : undefined;
-  if (giver && giftCard) {
-    giver.hand = sortHand(giver.hand.filter((candidate) => candidate.id !== giftCard.id));
-    player.hand = sortHand([...player.hand, giftCard]);
-    next.recentPickup = {
-      playerId: player.id,
-      cardIds: [giftCard.id],
-      at: now
-    };
+  updatedPlayer.consecutiveTimeouts = timeoutCount;
+  updatedPlayer.missedTurnStreak = timeoutCount;
+  updatedPlayer.connectionState = updatedPlayer.connected ? "afk" : "disconnected";
+  updatedPlayer.controlState = timeoutCount >= takeoverThreshold ? "temporary-bot" : "auto-play";
+  updatedPlayer.reliability.turnTimeouts += 1;
+  if (timeoutCount === takeoverThreshold) {
+    updatedPlayer.reliability.temporaryBotActivations += 1;
   }
 
   appendHistory(next, {
-    type: "penalty",
+    type: timeoutCount >= takeoverThreshold ? "bot" : "penalty",
     playerId,
-    message: giftCard && giver
-      ? `Timeout Dhulla! ${giver.username} gave ${cardLabel(giftCard)} to ${player.username} for missing the timer.`
-      : `Timeout Dhulla! ${player.username} missed the timer.`
+    message: timeoutCount >= takeoverThreshold
+      ? `${updatedPlayer.username} is away - a bot has temporarily taken over.`
+      : `Time expired - Auto Play chose ${cardLabel(card)} for ${updatedPlayer.username}.`
   }, now);
-
-  if (next.openingLeadRequired) {
-    next.activePlayerId = player.id;
-    setTurnClock(next, now);
-    next.updatedAt = now;
-    void rng;
-    return next;
-  }
-
-  next.timedOutPlayerIds = uniqueIds([...(next.timedOutPlayerIds ?? []), playerId]);
-  const nextPlayer = nextPendingPlayer(next, playerId);
-  if (nextPlayer) {
-    next.activePlayerId = nextPlayer.id;
-    setTurnClock(next, now);
-    next.updatedAt = now;
-    void rng;
-    return next;
-  }
-
-  if (next.trick.length > 0) {
-    resolveTrick(next, now);
-  } else {
-    const fallback = nextActivePlayerAfter(next, playerId) ?? nextActivePlayer(next);
-    if (fallback) {
-      next.activePlayerId = fallback.id;
-      setTurnClock(next, now);
-    } else {
-      finishRound(next, player, now);
-    }
-  }
-
   next.updatedAt = now;
-  void rng;
+  return next;
+}
+
+export function applyTemporaryBotMove(
+  state: GameState,
+  playerId: string,
+  move: MoveAction,
+  now = Date.now()
+): GameState {
+  const player = state.players.find((candidate) => candidate.id === playerId);
+  if (!player) {
+    return cloneGameState(state);
+  }
+
+  const activity = {
+    autoPlayEnabled: player.autoPlayEnabled,
+    connectionState: player.connectionState,
+    consecutiveTimeouts: player.consecutiveTimeouts,
+    controlState: player.controlState,
+    missedTurnStreak: player.missedTurnStreak,
+    reliability: { ...player.reliability }
+  };
+  const next = applyMove(state, playerId, move, now);
+  const updatedPlayer = next.players.find((candidate) => candidate.id === playerId);
+  if (updatedPlayer && !updatedPlayer.isBot) {
+    Object.assign(updatedPlayer, activity);
+  }
   return next;
 }
 
@@ -712,7 +743,9 @@ function finishRound(state: GameState, loser: PlayerState | undefined, now: numb
   state.winnerId = state.escapeOrder[0] ?? state.players.find((player) => player.id !== bhabhi.id)?.id ?? bhabhi.id;
   state.activePlayerId = undefined;
   state.turnStartedAt = undefined;
+  state.turnDeadline = undefined;
   state.turnEndsAt = undefined;
+  state.turnId = undefined;
   state.dealEndsAt = undefined;
   state.pendingDraw = 0;
   state.cardTakeUsedById = undefined;
@@ -840,35 +873,6 @@ function chooseTimeoutCard(cards: Card[]): Card | undefined {
     .sort((left, right) => rankValue(left.rank) - rankValue(right.rank))[0];
 }
 
-function declareTimeoutBhabhi(state: GameState, player: PlayerState, reason: string, now: number): void {
-  const originalName = player.username.replace(/\s+Bot$/i, "");
-  player.sessionId = undefined;
-  player.username = `${originalName} Bot`;
-  player.connected = true;
-  player.ready = true;
-  player.isBot = true;
-  player.botDifficulty = player.botDifficulty ?? "normal";
-  player.missedTurnStreak = 0;
-  player.lastSeenAt = now;
-  state.timedOutPlayerIds = (state.timedOutPlayerIds ?? []).filter((id) => id !== player.id);
-  state.activePlayerId = player.id;
-
-  appendHistory(state, {
-    type: "bot",
-    playerId: player.id,
-    message: `Bhabhi timeout! ${originalName} missed two turns in a row, so a bot takes over the seat.`
-  }, now);
-  appendHistory(state, {
-    type: "penalty",
-    playerId: player.id,
-    message: `${originalName} lost the timer penalty after ${reason}.`
-  }, now);
-}
-
-function uniqueIds(ids: string[]): string[] {
-  return Array.from(new Set(ids));
-}
-
 function sortHand(cards: Card[]): Card[] {
   const suitOrder: Record<Suit, number> = {
     spades: 0,
@@ -927,7 +931,9 @@ function setTurnClock(state: GameState, now: number): void {
     state.lastTrick ? state.lastTrick.resolvedAt + TRICK_REVEAL_MS : 0
   );
   state.turnStartedAt = startAt;
-  state.turnEndsAt = startAt + state.settings.turnSeconds * 1000;
+  state.turnDeadline = startAt + state.settings.turnSeconds * 1000;
+  state.turnEndsAt = state.turnDeadline;
+  state.turnId = createId("turn");
 }
 
 function appendHistory(

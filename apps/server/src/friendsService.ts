@@ -374,7 +374,22 @@ export class FriendsService {
     const profile = this.db.getPlayerProfile(profileId);
     const socketIds = [...(this.userSockets.get(profileId) ?? [])].filter((socketId) => this.io.sockets.sockets.has(socketId));
     const candidates = socketIds.map((socketId) => this.presenceCandidate(socketId));
-    const candidate = candidates.sort((first, second) => presenceWeight(second.status) - presenceWeight(first.status))[0];
+    let candidate = candidates.sort((first, second) => presenceWeight(second.status) - presenceWeight(first.status))[0];
+    if (!candidate) {
+      const reserved = this.roomManager.getReservedProfileRoom(profileId);
+      if (reserved) {
+        const tournament = reserved.room.roomMode === "tournament";
+        candidate = {
+          status: tournament ? "in_tournament" : "in_match",
+          activity: reserved.connectionState === "disconnected"
+            ? "In Match • Disconnected"
+            : reserved.controlState === "temporary-bot"
+              ? "Away • In Match"
+              : "In Match",
+          room: { ...reserved.room, joinable: false }
+        };
+      }
+    }
     if (!candidate) {
       return { profileId, status: "offline", activity: "Offline", joinable: false, lastActiveAt: profile?.lastActiveAt ?? Date.now() };
     }

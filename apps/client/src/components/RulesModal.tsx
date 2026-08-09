@@ -59,8 +59,8 @@ export function RulesModal({ open, onClose }: RulesModalProps) {
         <section>
           <h3 className="mb-2 text-base font-black text-slate-950 dark:text-white">Timer</h3>
           <p>
-            If the timer expires, the next player gives one card as Timeout Dhulla. Missing two turns in a row declares
-            that seat Bhabhi and replaces a disconnected human with a bot so the game can continue.
+            If the timer expires, the server safely plays the lowest legal card without skipping the turn. After two
+            consecutive timeouts, temporary Auto Play controls the same seat until the player returns and takes control.
           </p>
         </section>
       </div>

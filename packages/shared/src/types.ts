@@ -25,6 +25,14 @@ export type RoomMode = "private" | "quick" | "bots" | "tournament";
 
 export type RoomVisibility = "private" | "public";
 
+export type PlayerConnectionState =
+  | "online"
+  | "afk"
+  | "disconnected"
+  | "reconnecting";
+
+export type PlayerControlState = "human" | "auto-play" | "temporary-bot";
+
 import type { AccountType } from "./profile.js";
 
 export type TournamentStatus = "active" | "won" | "eliminated";
@@ -92,6 +100,11 @@ export interface PlayerState {
   score: number;
   roundWins: number;
   connected: boolean;
+  connectionState: PlayerConnectionState;
+  controlState: PlayerControlState;
+  autoPlayEnabled: boolean;
+  consecutiveTimeouts: number;
+  reconnectDeadline?: number;
   ready: boolean;
   isBot: boolean;
   botDifficulty?: BotDifficulty;
@@ -99,6 +112,13 @@ export interface PlayerState {
   profileId?: string;
   rankBadge?: string;
   missedTurnStreak?: number;
+  reliability: {
+    turnTimeouts: number;
+    temporaryBotActivations: number;
+    disconnects: number;
+    reconnects: number;
+    abandonedMatches: number;
+  };
   joinedAt: number;
   lastSeenAt: number;
 }
@@ -197,7 +217,9 @@ export interface GameState {
   declaredSuit?: Suit;
   dealEndsAt?: number;
   turnStartedAt?: number;
+  turnDeadline?: number;
   turnEndsAt?: number;
+  turnId?: string;
   round: number;
   roundSummaries: RoundSummary[];
   history: GameEvent[];
@@ -282,7 +304,7 @@ export interface TournamentState {
 }
 
 export interface PublicPlayerState
-  extends Omit<PlayerState, "hand" | "sessionId" | "profileId"> {
+  extends Omit<PlayerState, "hand" | "sessionId" | "profileId" | "reliability"> {
   handCount: number;
   hand?: Card[];
   isYou: boolean;

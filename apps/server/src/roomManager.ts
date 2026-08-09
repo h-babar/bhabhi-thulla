@@ -4,8 +4,9 @@ import {
   NATION_OPTIONS,
   TRICK_REVEAL_MS,
   applyMove,
-  applyPenalty,
+  applyTemporaryBotMove,
   applyTakeNextPlayerCards,
+  applyTimeoutAutoPlay,
   canStartGame,
   chooseBotMove,
   createGameState,
@@ -15,6 +16,7 @@ import {
   startRound,
   toPublicGameState,
   type AddBotPayload,
+  type ActiveGameSummary,
   type BasicResponse,
   type BotDifficulty,
   type Card,
@@ -68,6 +70,12 @@ export interface SocialRoomInfo {
   registeredProfileIds: string[];
 }
 
+export interface ReservedProfileRoom {
+  room: SocialRoomInfo;
+  connectionState: GameState["players"][number]["connectionState"];
+  controlState: GameState["players"][number]["controlState"];
+}
+
 type RoomChangedHandler = (roomCode: string) => void | Promise<void>;
 type RoomClosedHandler = (payload: RoomClosedPayload) => void | Promise<void>;
 type RoomDatabase = Pick<GameDatabase, "recordSnapshot" | "deleteRoomSnapshot">;
@@ -75,6 +83,9 @@ type RoomDatabase = Pick<GameDatabase, "recordSnapshot" | "deleteRoomSnapshot">;
 export interface RoomLifecycleOptions {
   matchResultsMs?: number;
   reconnectGraceMs?: number;
+  playerReconnectGraceMs?: number;
+  afkTimeoutsBeforeBot?: number;
+  botActionDelayMs?: number;
 }
 
 export interface RoomCleanupPlan {
@@ -87,6 +98,8 @@ const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const WIN_CELEBRATION_MS = 2000;
 const MATCH_RESULTS_MS = 12_000;
 const RECONNECT_GRACE_MS = 5 * 60_000;
+const PLAYER_RECONNECT_GRACE_MS = 120_000;
+const AFK_TIMEOUTS_BEFORE_BOT = 2;
 const TOURNAMENT_STAGE_DEFS = [
   { id: "group_stage", name: "Group Stage" },
   { id: "quarter_final", name: "Quarter Final" },
@@ -265,11 +278,13 @@ export class RoomManager {
 
     const now = Date.now();
     const requestedSessionId = payload.sessionId;
-    const existingPlayer = requestedSessionId
-      ? room.state.players.find((player) => player.sessionId === requestedSessionId)
-      : payload.profileId
+    const existingPlayer =
+      (requestedSessionId
+        ? room.state.players.find((player) => player.sessionId === requestedSessionId)
+        : undefined) ??
+      (payload.profileId
         ? room.state.players.find((player) => player.profileId === payload.profileId)
-        : undefined;
+        : undefined);
     const existingSpectator = requestedSessionId
       ? room.state.spectators.find((spectator) => spectator.sessionId === requestedSessionId)
       : undefined;
@@ -278,7 +293,14 @@ export class RoomManager {
       if (existingPlayer.accountType === "registered" && existingPlayer.profileId !== payload.profileId) {
         return { ok: false, error: "Sign in to the original account to reclaim this seat." };
       }
+      const wasDisconnected = !existingPlayer.connected;
       existingPlayer.connected = true;
+      existingPlayer.connectionState = room.state.status === "playing" ? "reconnecting" : "online";
+      existingPlayer.controlState = room.state.status === "playing" ? "temporary-bot" : "human";
+      existingPlayer.reconnectDeadline = undefined;
+      if (wasDisconnected) {
+        existingPlayer.reliability.reconnects += 1;
+      }
       existingPlayer.lastSeenAt = now;
       existingPlayer.username = payload.username.trim().slice(0, 24) || existingPlayer.username;
       existingPlayer.avatar = payload.avatar.trim().slice(0, 24) || existingPlayer.avatar;
@@ -361,6 +383,16 @@ export class RoomManager {
       this.disconnectSocket(socketId);
     }
 
+    for (const [otherSocketId, seat] of this.socketSeats) {
+      if (
+        otherSocketId !== socketId &&
+        seat.roomCode === roomCode &&
+        seat.participantId === participantId
+      ) {
+        this.socketSeats.delete(otherSocketId);
+      }
+    }
+
     this.socketSeats.set(socketId, {
       roomCode,
       participantId
@@ -394,8 +426,14 @@ export class RoomManager {
 
     if (player && !player.isBot) {
       player.connected = false;
+      player.connectionState = "disconnected";
+      player.controlState = "temporary-bot";
+      player.autoPlayEnabled = false;
+      player.reconnectDeadline = now + (this.lifecycleOptions.playerReconnectGraceMs ?? PLAYER_RECONNECT_GRACE_MS);
+      player.reliability.disconnects += 1;
       player.ready = false;
       player.lastSeenAt = now;
+      this.pushEvent(room.state, "leave", `${player.username} disconnected - bot playing temporarily.`, player.id, now);
       room.state.updatedAt = now;
       this.commitExisting(seat.roomCode);
       return seat.roomCode;
@@ -421,6 +459,36 @@ export class RoomManager {
     return room ? toPublicGameState(room.state, viewerId) : undefined;
   }
 
+  findActiveGame(profileId: string): ActiveGameSummary | undefined {
+    for (const room of this.rooms.values()) {
+      if (room.state.status === "game_over") continue;
+      const player = room.state.players.find(
+        (candidate) => !candidate.isBot && candidate.profileId === profileId
+      );
+      if (!player) continue;
+      return {
+        roomCode: room.state.roomCode,
+        status: room.state.status,
+        playerCount: room.state.players.length,
+        maxPlayers: room.state.settings.maxPlayers,
+        controlState: player.controlState,
+        connectionState: player.connectionState
+      };
+    }
+    return undefined;
+  }
+
+  rejoinActive(payload: Omit<JoinRoomPayload, "roomCode">): RoomJoinResponse {
+    if (!payload.profileId) {
+      return { ok: false, error: "Sign in to recover an active game from another device." };
+    }
+    const active = this.findActiveGame(payload.profileId);
+    if (!active) {
+      return { ok: false, error: "No active game was found for this account." };
+    }
+    return this.joinRoom({ ...payload, roomCode: active.roomCode });
+  }
+
   getSocialRoomInfo(roomCode: string): SocialRoomInfo | undefined {
     const normalized = normalizeRoomCode(roomCode);
     const room = this.rooms.get(normalized);
@@ -441,6 +509,23 @@ export class RoomManager {
         .map((player) => player.profileId)
         .filter((profileId): profileId is string => Boolean(profileId))
     };
+  }
+
+  getReservedProfileRoom(profileId: string): ReservedProfileRoom | undefined {
+    for (const room of this.rooms.values()) {
+      const player = room.state.players.find(
+        (candidate) => !candidate.isBot && candidate.profileId === profileId
+      );
+      if (!player || room.state.status === "game_over") continue;
+      const socialRoom = this.getSocialRoomInfo(room.state.roomCode);
+      if (!socialRoom) continue;
+      return {
+        room: socialRoom,
+        connectionState: player.connectionState,
+        controlState: player.controlState
+      };
+    }
+    return undefined;
   }
 
   getSocketProfileId(socketId: string): string | undefined {
@@ -584,7 +669,7 @@ export class RoomManager {
     return { ok: true };
   }
 
-  takeNextPlayerCards(roomCodeInput: string, actorId: string): BasicResponse {
+  takeNextPlayerCards(roomCodeInput: string, actorId: string, turnId?: string): BasicResponse {
     const roomCode = normalizeRoomCode(roomCodeInput);
     const room = this.rooms.get(roomCode);
     if (!room) {
@@ -593,6 +678,15 @@ export class RoomManager {
 
     if (room.state.winCelebration && room.state.winCelebration.endsAt > Date.now()) {
       return { ok: false, error: "Celebrating the safe player. Play resumes in a moment." };
+    }
+
+    if (room.state.turnId && turnId !== room.state.turnId) {
+      return { ok: false, error: "That turn has already been completed." };
+    }
+
+    const actor = room.state.players.find((player) => player.id === actorId);
+    if (actor && !actor.isBot && actor.controlState === "temporary-bot") {
+      return { ok: false, error: "Bot control is active. Take control before taking another hand." };
     }
 
     try {
@@ -606,7 +700,12 @@ export class RoomManager {
     }
   }
 
-  performMove(roomCodeInput: string, actorId: string, move: Parameters<typeof applyMove>[2]): BasicResponse {
+  performMove(
+    roomCodeInput: string,
+    actorId: string,
+    move: Parameters<typeof applyMove>[2],
+    turnId?: string
+  ): BasicResponse {
     const roomCode = normalizeRoomCode(roomCodeInput);
     const room = this.rooms.get(roomCode);
     if (!room) {
@@ -615,6 +714,15 @@ export class RoomManager {
 
     if (room.state.winCelebration && room.state.winCelebration.endsAt > Date.now()) {
       return { ok: false, error: "Celebrating the winner. Play resumes in a moment." };
+    }
+
+    if (room.state.turnId && turnId !== room.state.turnId) {
+      return { ok: false, error: "That turn has already been completed." };
+    }
+
+    const actor = room.state.players.find((player) => player.id === actorId);
+    if (actor && !actor.isBot && actor.controlState === "temporary-bot") {
+      return { ok: false, error: "Bot control is active. Take control before playing a card." };
     }
 
     try {
@@ -626,6 +734,65 @@ export class RoomManager {
         error: error instanceof Error ? error.message : "Move rejected by the rules engine."
       };
     }
+  }
+
+  takeControl(roomCodeInput: string, actorId: string, turnId?: string): BasicResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    const player = room.state.players.find((candidate) => candidate.id === actorId);
+    if (!player || player.isBot) {
+      return { ok: false, error: "Only the human assigned to this seat can take control." };
+    }
+    if (!player.connected) {
+      return { ok: false, error: "Reconnect to the room before taking control." };
+    }
+    if (turnId && room.state.turnId && turnId !== room.state.turnId) {
+      return { ok: false, error: "The table moved to a new turn. Try Take Control again." };
+    }
+
+    const now = Date.now();
+    player.controlState = "human";
+    player.connectionState = "online";
+    player.autoPlayEnabled = false;
+    player.consecutiveTimeouts = 0;
+    player.missedTurnStreak = 0;
+    player.reconnectDeadline = undefined;
+    if (room.state.status === "playing" && room.state.activePlayerId === actorId) {
+      this.resetTurnClock(room.state, now);
+    }
+    this.pushEvent(room.state, "join", `${player.username} took control of the seat.`, player.id, now);
+    this.commitExisting(roomCode);
+    return { ok: true };
+  }
+
+  setAutoPlay(roomCodeInput: string, actorId: string, enabled: boolean): BasicResponse {
+    const roomCode = normalizeRoomCode(roomCodeInput);
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      return { ok: false, error: "Room not found." };
+    }
+
+    const player = room.state.players.find((candidate) => candidate.id === actorId);
+    if (!player || player.isBot || !player.connected) {
+      return { ok: false, error: "Auto Play is available only for your connected human seat." };
+    }
+
+    if (!enabled) {
+      return this.takeControl(roomCode, actorId);
+    }
+
+    const now = Date.now();
+    player.autoPlayEnabled = true;
+    player.controlState = "temporary-bot";
+    player.connectionState = "afk";
+    player.reliability.temporaryBotActivations += 1;
+    this.pushEvent(room.state, "bot", `${player.username} enabled Auto Play.`, player.id, now);
+    this.commitExisting(roomCode);
+    return { ok: true };
   }
 
   updateSettings(payload: SettingsPayload, actorId: string): BasicResponse {
@@ -685,6 +852,11 @@ export class RoomManager {
       player.sessionId = undefined;
       player.username = originalName.endsWith(" Bot") ? originalName : `${originalName} Bot`;
       player.connected = true;
+      player.connectionState = "online";
+      player.controlState = "human";
+      player.autoPlayEnabled = false;
+      player.consecutiveTimeouts = 0;
+      player.reconnectDeadline = undefined;
       player.ready = true;
       player.isBot = true;
       player.botDifficulty = player.botDifficulty ?? "normal";
@@ -804,6 +976,11 @@ export class RoomManager {
     player.username = spectator.username;
     player.avatar = spectator.avatar;
     player.connected = true;
+    player.connectionState = "online";
+    player.controlState = "human";
+    player.autoPlayEnabled = false;
+    player.consecutiveTimeouts = 0;
+    player.reconnectDeadline = undefined;
     player.ready = false;
     player.isBot = false;
     player.botDifficulty = undefined;
@@ -814,8 +991,7 @@ export class RoomManager {
     this.removeSocketSeatsForParticipant(roomCode, actorId);
 
     if (room.state.status === "playing" && room.state.activePlayerId === player.id) {
-      room.state.turnStartedAt = now;
-      room.state.turnEndsAt = now + room.state.settings.turnSeconds * 1000;
+      this.resetTurnClock(room.state, now);
     }
 
     room.state.updatedAt = now;
@@ -1057,7 +1233,10 @@ export class RoomManager {
     }
 
     const now = Date.now();
-    const turnDelay = Math.max(300, (room.state.turnEndsAt ?? now + 1000) - now);
+    const turnId = room.state.turnId ?? createId("turn");
+    room.state.turnId = turnId;
+    room.state.turnDeadline = room.state.turnDeadline ?? room.state.turnEndsAt;
+    const turnDelay = Math.max(300, (room.state.turnDeadline ?? room.state.turnEndsAt ?? now + 1000) - now);
 
     room.turnTimer = setTimeout(() => {
       const latest = this.rooms.get(roomCode);
@@ -1065,34 +1244,36 @@ export class RoomManager {
         return;
       }
 
-      if (latest.state.activePlayerId !== activePlayer.id) {
+      if (latest.state.activePlayerId !== activePlayer.id || latest.state.turnId !== turnId) {
         return;
       }
 
-      const wasHuman = !activePlayer.isBot;
-      const nextState = applyPenalty(latest.state, activePlayer.id, "missing the turn timer");
-      const penalized = nextState.players.find((player) => player.id === activePlayer.id);
-      if (wasHuman && penalized?.isBot && !penalized.sessionId) {
-        this.removeSocketSeatsForParticipant(roomCode, activePlayer.id);
-      }
-
+      const nextState = applyTimeoutAutoPlay(
+        latest.state,
+        activePlayer.id,
+        this.lifecycleOptions.afkTimeoutsBeforeBot ?? AFK_TIMEOUTS_BEFORE_BOT
+      );
       this.commitState(roomCode, nextState);
     }, turnDelay + 50);
 
-    if (activePlayer.isBot) {
+    const temporaryController =
+      !activePlayer.isBot &&
+      (activePlayer.controlState === "temporary-bot" || !activePlayer.connected || activePlayer.autoPlayEnabled);
+    if (activePlayer.isBot || temporaryController) {
       const dealDelay = room.state.dealEndsAt
         ? Math.max(0, room.state.dealEndsAt - now)
         : 0;
       const revealDelay = room.state.lastTrick
         ? Math.max(0, TRICK_REVEAL_MS - (now - room.state.lastTrick.resolvedAt))
         : 0;
-      const botDelay = Math.min(
+      const configuredBotDelay = this.lifecycleOptions.botActionDelayMs;
+      const botDelay = configuredBotDelay ?? Math.min(
         turnDelay - 100,
         dealDelay + revealDelay + 850 + Math.floor(Math.random() * 900)
       );
       room.botTimer = setTimeout(() => {
         const latest = this.rooms.get(roomCode);
-        if (!latest || latest.state.status !== "playing") {
+        if (!latest || latest.state.status !== "playing" || latest.state.turnId !== turnId) {
           return;
         }
 
@@ -1102,15 +1283,28 @@ export class RoomManager {
         }
 
         const bot = latest.state.players.find((player) => player.id === latest.state.activePlayerId);
-        if (!bot?.isBot) {
+        const botControlsSeat = Boolean(
+          bot && (bot.isBot || bot.controlState === "temporary-bot" || !bot.connected || bot.autoPlayEnabled)
+        );
+        if (!bot || !botControlsSeat) {
           return;
         }
 
         try {
           const move = chooseBotMove(latest.state, bot.id, bot.botDifficulty ?? "normal");
-          this.commitState(roomCode, applyMove(latest.state, bot.id, move));
+          const nextState = bot.isBot
+            ? applyMove(latest.state, bot.id, move)
+            : applyTemporaryBotMove(latest.state, bot.id, move);
+          this.commitState(roomCode, nextState);
         } catch {
-          this.commitState(roomCode, applyPenalty(latest.state, bot.id, "a confused bot move"));
+          this.commitState(
+            roomCode,
+            applyTimeoutAutoPlay(
+              latest.state,
+              bot.id,
+              this.lifecycleOptions.afkTimeoutsBeforeBot ?? AFK_TIMEOUTS_BEFORE_BOT
+            )
+          );
         }
       }, Math.max(250, botDelay));
     }
@@ -1275,7 +1469,9 @@ export class RoomManager {
       bhabhi.id;
     state.activePlayerId = undefined;
     state.turnStartedAt = undefined;
+    state.turnDeadline = undefined;
     state.turnEndsAt = undefined;
+    state.turnId = undefined;
     state.dealEndsAt = undefined;
     state.pendingDraw = 0;
     state.declaredSuit = undefined;
@@ -1389,7 +1585,16 @@ export class RoomManager {
       state.lastTrick ? state.lastTrick.resolvedAt + TRICK_REVEAL_MS : 0
     );
     state.turnStartedAt = startAt;
-    state.turnEndsAt = startAt + state.settings.turnSeconds * 1000;
+    state.turnDeadline = startAt + state.settings.turnSeconds * 1000;
+    state.turnEndsAt = state.turnDeadline;
+    state.turnId = createId("turn");
+  }
+
+  private resetTurnClock(state: GameState, now: number): void {
+    state.turnStartedAt = now;
+    state.turnDeadline = now + state.settings.turnSeconds * 1000;
+    state.turnEndsAt = state.turnDeadline;
+    state.turnId = createId("turn");
   }
 
   private removeSocketSeatsForParticipant(roomCode: string, participantId: string): void {
@@ -1446,12 +1651,17 @@ export class RoomManager {
       stage.slots = createTournamentStageSlots(tournament, stage.stageNumber - 1, playerNation, human.id, now);
     }
 
-    const resetHuman = {
+    const resetHuman: GameState["players"][number] = {
       ...human,
       hand: [],
       score: 0,
       roundWins: 0,
       connected: true,
+      connectionState: "online",
+      controlState: "human",
+      autoPlayEnabled: false,
+      consecutiveTimeouts: 0,
+      reconnectDeadline: undefined,
       ready: false,
       lastSeenAt: now
     };

@@ -62,6 +62,8 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
   const avatar = useGameStore((store) => store.avatar);
   const rooms = useGameStore((store) => store.rooms);
   const socketStatus = useGameStore((store) => store.socketStatus);
+  const activeGame = useGameStore((store) => store.activeGame);
+  const rejoinActiveGame = useGameStore((store) => store.rejoinActiveGame);
   const createRoom = useGameStore((store) => store.createRoom);
   const joinRoom = useGameStore((store) => store.joinRoom);
   const quickPlay = useGameStore((store) => store.quickPlay);
@@ -150,6 +152,33 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
             <ProfileMenu compact onSettings={() => setSettingsOpen(true)} />
           </div>
         </header>
+
+        <AnimatePresence>
+          {activeGame ? (
+            <motion.section
+              className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300/30 bg-[linear-gradient(110deg,rgba(15,118,110,0.3),rgba(245,158,11,0.14))] px-4 py-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-xl border border-amber-200/35 bg-amber-200/15 text-amber-200">
+                  <Bot size={21} />
+                </span>
+                <span>
+                  <small className="block text-[0.64rem] font-black uppercase tracking-[0.2em] text-amber-200">Active game found</small>
+                  <strong className="block text-base">Room {activeGame.roomCode}</strong>
+                  <em className="block text-xs not-italic text-white/65">
+                    {activeGame.playerCount}/{activeGame.maxPlayers} players • Your seat is reserved
+                  </em>
+                </span>
+              </div>
+              <button className="primary-button px-5 py-2.5" onClick={rejoinActiveGame}>
+                <LogIn size={17} /> Rejoin Game
+              </button>
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
 
         <section className="home-launch-grid">
           <motion.section
