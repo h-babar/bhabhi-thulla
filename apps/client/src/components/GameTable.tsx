@@ -1701,7 +1701,8 @@ function TurnControls({
       </button>
       <button className="sort-card-action secondary-button px-3 py-2" onClick={onSort}>
         <RotateCcw size={16} />
-        Sort <span className="sort-mode-label">{sortMode === "deal" ? "" : sortMode}</span>
+        Sort
+        {sortMode === "deal" ? null : <span className="sort-mode-label">{sortMode}</span>}
       </button>
       <button className="auto-play-action secondary-button px-3 py-2" onClick={onAutoPlay} title="Let the server play this seat until you return">
         <Bot size={16} />

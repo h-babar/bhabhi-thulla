@@ -15563,3 +15563,255 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     grid-column: 2 !important;
   }
 }
+
+/* Final home and table polish: explicit theme contrast and clean control geometry. */
+.sort-card-action .sort-mode-label {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.16rem 0.38rem;
+  color: currentColor;
+  font-size: 0.54rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-profile-row {
+  position: relative;
+  min-height: 5.7rem;
+  overflow: hidden;
+  gap: 0.82rem;
+  border: 1px solid rgba(232, 199, 109, 0.2) !important;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 0 50%, rgba(55, 215, 153, 0.13), transparent 8rem),
+    linear-gradient(120deg, rgba(7, 25, 20, 0.98), rgba(12, 33, 26, 0.9)) !important;
+  padding: 0.75rem 0.85rem !important;
+  color: #f6fbf8 !important;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.07),
+    0 0.8rem 1.8rem rgba(0, 0, 0, 0.18) !important;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.home-profile-row::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 34%;
+  background: linear-gradient(110deg, transparent, rgba(226, 190, 91, 0.07));
+  pointer-events: none;
+}
+
+.home-profile-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(232, 199, 109, 0.4) !important;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.09),
+    0 1rem 2.2rem rgba(0, 0, 0, 0.24) !important;
+}
+
+.home-profile-row > span {
+  position: relative;
+  z-index: 1;
+  align-content: center;
+}
+
+.home-profile-row p {
+  color: #d9ba67 !important;
+  font-size: 0.62rem !important;
+}
+
+.home-profile-row strong {
+  color: #f7fbf9 !important;
+  font-size: 1.02rem !important;
+  line-height: 1.22;
+}
+
+.home-profile-row small {
+  margin-top: 0.12rem;
+  color: #91aaa0 !important;
+  font-size: 0.67rem !important;
+}
+
+.home-profile-row > svg {
+  position: relative;
+  z-index: 1;
+  color: #d9ba67;
+}
+
+.home-private-actions > button {
+  min-height: 2.2rem;
+  border: 1px solid rgba(92, 226, 172, 0.17);
+  border-radius: 999px;
+  background: rgba(56, 199, 143, 0.08);
+  padding: 0.35rem 0.72rem;
+  color: #91edc8 !important;
+}
+
+.home-private-actions > button:hover {
+  border-color: rgba(92, 226, 172, 0.38);
+  background: rgba(56, 199, 143, 0.14);
+  color: #d1fae5 !important;
+}
+
+:root:not(.dark) .home-profile-row {
+  border-color: rgba(45, 103, 81, 0.2) !important;
+  background:
+    radial-gradient(circle at 0 50%, rgba(35, 183, 128, 0.12), transparent 8rem),
+    linear-gradient(120deg, #f8fcfa, #edf7f2) !important;
+  color: #173a2d !important;
+  box-shadow:
+    inset 0 1px #fff,
+    0 0.85rem 2rem rgba(36, 75, 60, 0.1) !important;
+}
+
+:root:not(.dark) .home-profile-row:hover {
+  border-color: rgba(24, 150, 103, 0.38) !important;
+  background: linear-gradient(120deg, #f3fbf7, #e5f5ed) !important;
+}
+
+:root:not(.dark) .home-profile-row p { color: #8a651d !important; }
+:root:not(.dark) .home-profile-row strong { color: #153a2c !important; }
+:root:not(.dark) .home-profile-row small { color: #617970 !important; }
+:root:not(.dark) .home-profile-row > svg { color: #446b5c !important; }
+
+:root:not(.dark) .home-private-actions > button {
+  border-color: rgba(19, 132, 92, 0.22);
+  background: #e8f6ef;
+  color: #0d694a !important;
+}
+
+:root:not(.dark) .home-private-actions > button:hover {
+  border-color: rgba(19, 132, 92, 0.38);
+  background: #daf1e6;
+  color: #074c36 !important;
+}
+
+:root:not(.dark) .home-private-actions label {
+  color: #526b61 !important;
+}
+
+:root:not(.dark) .home-section-heading p {
+  color: #117854;
+}
+
+:root:not(.dark) .home-section-heading h2 {
+  color: #17392c;
+}
+
+:root:not(.dark) .home-section-heading button {
+  color: #8a651d;
+}
+
+:root:not(.dark) .home-game-lobby .home-event-card {
+  border-color: rgba(49, 88, 73, 0.16) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(211, 169, 67, 0.16), transparent 8rem),
+    radial-gradient(circle at 0 100%, rgba(36, 171, 119, 0.1), transparent 10rem),
+    linear-gradient(145deg, #fffdf8, #f1f7f3) !important;
+  color: #17392c !important;
+  box-shadow:
+    0 0.9rem 2.3rem rgba(30, 64, 52, 0.1),
+    inset 0 1px #fff !important;
+}
+
+:root:not(.dark) .home-game-lobby .home-event-card:hover {
+  border-color: rgba(155, 116, 30, 0.3) !important;
+  box-shadow:
+    0 1.2rem 2.8rem rgba(30, 64, 52, 0.14),
+    inset 0 1px #fff !important;
+}
+
+:root:not(.dark) .home-game-lobby .home-event-card > div:first-child > span {
+  background: rgba(20, 102, 75, 0.09) !important;
+  color: #0e6b4c !important;
+}
+
+:root:not(.dark) .home-game-lobby .home-event-card > p:first-of-type {
+  color: #88641c !important;
+}
+
+:root:not(.dark) .home-game-lobby .home-event-card h3 {
+  color: #17392c !important;
+}
+
+:root:not(.dark) .home-game-lobby .home-event-card > p:last-of-type {
+  color: #5b7067 !important;
+}
+
+:root:not(.dark) .home-game-lobby .home-event-card::after {
+  border-color: rgba(169, 127, 33, 0.14);
+  background: radial-gradient(ellipse at center, rgba(40, 173, 121, 0.1), transparent 62%);
+}
+
+/* Classic casino: walnut rail, bottle-green wool felt, and restrained brass trim. */
+.play-table-shell.table-theme-casino {
+  --table-felt: #0b563c;
+  --table-felt-deep: #032a20;
+  --table-rim: #603316;
+  --table-rim-deep: #190b05;
+  --table-rim-glow: rgba(210, 157, 59, 0.44);
+  --table-trim: rgba(231, 197, 103, 0.72);
+  --table-centre-light: rgba(127, 219, 172, 0.19);
+  --table-grain: rgba(232, 220, 175, 0.035);
+  --table-accent: rgba(226, 190, 91, 0.54);
+  --table-rim-highlight: rgba(255, 220, 154, 0.2);
+  --table-rim-pattern:
+    repeating-linear-gradient(7deg, rgba(255, 226, 166, 0.035) 0 1px, transparent 1px 15px),
+    repeating-linear-gradient(97deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 24px);
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 224, 166, 0.22), transparent 45%),
+    radial-gradient(circle at 10% 50%, rgba(160, 83, 32, 0.2), transparent 24%),
+    radial-gradient(circle at 90% 50%, rgba(160, 83, 32, 0.18), transparent 24%),
+    var(--table-rim-pattern),
+    linear-gradient(145deg, #180a04, #6c3818 38%, #3c1b0d 67%, #150804) !important;
+  box-shadow:
+    0 0.78rem 0 #100502,
+    0 2.35rem 5.2rem rgba(0, 0, 0, 0.72),
+    0 0 3.2rem rgba(190, 129, 39, 0.14),
+    inset 0 0 0 0.16rem rgba(246, 211, 140, 0.14),
+    inset 0 1.2rem 2.6rem rgba(255, 226, 173, 0.12),
+    inset 0 -2.6rem 4.6rem rgba(0, 0, 0, 0.62) !important;
+}
+
+.play-table-shell.table-theme-casino::before {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(177, 239, 201, 0.16), transparent 31%),
+    radial-gradient(ellipse at 50% 54%, #0c6345 0%, #094d37 44%, #043526 73%, #021d17 100%),
+    repeating-linear-gradient(33deg, rgba(245, 237, 203, 0.022) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(93deg, rgba(220, 196, 123, 0.02) 0 1px, transparent 1px 11px) !important;
+  box-shadow:
+    inset 0 0 0 0.19rem rgba(0, 0, 0, 0.58),
+    inset 0 0 0 0.34rem rgba(229, 193, 94, 0.64),
+    inset 0 0 0 0.58rem rgba(29, 15, 7, 0.78),
+    inset 0 2rem 4rem rgba(255, 255, 255, 0.065),
+    inset 0 -4.2rem 7rem rgba(0, 0, 0, 0.48) !important;
+}
+
+.play-table-shell.table-theme-casino::after {
+  border-color: rgba(242, 208, 111, 0.72) !important;
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(121, 218, 169, 0.08), transparent 37%),
+    radial-gradient(ellipse at center, transparent 0 55%, rgba(0, 0, 0, 0.28) 100%) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 244, 205, 0.1),
+    inset 0 0 3.4rem rgba(0, 0, 0, 0.25),
+    0 0 1.4rem rgba(224, 182, 76, 0.14) !important;
+}
+
+.play-table-shell.table-theme-casino .trick-table-oval {
+  background:
+    radial-gradient(ellipse at 50% 46%, rgba(122, 224, 172, 0.15), transparent 36%),
+    radial-gradient(ellipse at center, rgba(10, 92, 62, 0.95), rgba(5, 57, 41, 0.96) 68%, rgba(2, 31, 24, 0.98) 100%),
+    repeating-linear-gradient(32deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 8px) !important;
+  box-shadow:
+    0 0 0 1px rgba(230, 196, 102, 0.2),
+    inset 0 1.5rem 4rem rgba(255, 255, 255, 0.045),
+    inset 0 -3.4rem 6rem rgba(0, 0, 0, 0.32),
+    0 1.4rem 3rem rgba(0, 0, 0, 0.28) !important;
+}
