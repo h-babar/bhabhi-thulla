@@ -145,7 +145,15 @@ function parsePreferences(input: Partial<PlayerPreferences>): Partial<PlayerPref
   const preferences: Partial<PlayerPreferences> = {};
   if (typeof input.tableTheme === "string" && tableThemes.has(input.tableTheme)) preferences.tableTheme = input.tableTheme;
   if (typeof input.cardBack === "string" && cardStyles.has(input.cardBack)) preferences.cardBack = input.cardBack;
-  for (const key of ["soundEnabled", "musicEnabled", "vibrationEnabled", "reducedMotion", "highContrast"] as const) {
+  for (const key of [
+    "soundEnabled",
+    "musicEnabled",
+    "vibrationEnabled",
+    "reducedMotion",
+    "highContrast",
+    "shareAvatarInResults",
+    "shareUsernameInResults"
+  ] as const) {
     if (typeof input[key] === "boolean") preferences[key] = input[key];
   }
   if (input.activityVisibility === "everyone" || input.activityVisibility === "friends" || input.activityVisibility === "nobody") {

@@ -283,7 +283,9 @@ function defaultPreferences(): PlayerPreferences {
     highContrast: false,
     language: "en",
     activityVisibility: "friends",
-    friendOnlineNotifications: false
+    friendOnlineNotifications: false,
+    shareAvatarInResults: true,
+    shareUsernameInResults: true
   };
 }
 

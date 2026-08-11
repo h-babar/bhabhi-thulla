@@ -22,6 +22,8 @@ export interface PlayerPreferences {
   language: string;
   activityVisibility: "everyone" | "friends" | "nobody";
   friendOnlineNotifications: boolean;
+  shareAvatarInResults: boolean;
+  shareUsernameInResults: boolean;
 }
 
 export interface AchievementDefinition {

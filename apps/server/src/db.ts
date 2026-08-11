@@ -833,7 +833,8 @@ export class GameDatabase {
     this.db.prepare(
       `UPDATE player_preferences SET table_theme = ?, card_back = ?, sound_enabled = ?,
        music_enabled = ?, vibration_enabled = ?, reduced_motion = ?, high_contrast = ?,
-       language = ?, activity_visibility = ?, friend_online_notifications = ? WHERE user_id = ?`
+       language = ?, activity_visibility = ?, friend_online_notifications = ?,
+       share_avatar_in_results = ?, share_username_in_results = ? WHERE user_id = ?`
     ).run(
       preferences.tableTheme,
       preferences.cardBack,
@@ -845,6 +846,8 @@ export class GameDatabase {
       preferences.language,
       preferences.activityVisibility,
       boolInt(preferences.friendOnlineNotifications),
+      boolInt(preferences.shareAvatarInResults),
+      boolInt(preferences.shareUsernameInResults),
       userId
     );
   }
@@ -953,7 +956,9 @@ export class GameDatabase {
         vibration_enabled INTEGER NOT NULL DEFAULT 1,
         reduced_motion INTEGER NOT NULL DEFAULT 0,
         high_contrast INTEGER NOT NULL DEFAULT 0,
-        language TEXT NOT NULL DEFAULT 'en'
+        language TEXT NOT NULL DEFAULT 'en',
+        share_avatar_in_results INTEGER NOT NULL DEFAULT 1,
+        share_username_in_results INTEGER NOT NULL DEFAULT 1
       );
 
       CREATE TABLE IF NOT EXISTS achievements (
@@ -1055,6 +1060,8 @@ export class GameDatabase {
     `);
     this.ensureColumn("player_preferences", "activity_visibility", "TEXT NOT NULL DEFAULT 'friends'");
     this.ensureColumn("player_preferences", "friend_online_notifications", "INTEGER NOT NULL DEFAULT 0");
+    this.ensureColumn("player_preferences", "share_avatar_in_results", "INTEGER NOT NULL DEFAULT 1");
+    this.ensureColumn("player_preferences", "share_username_in_results", "INTEGER NOT NULL DEFAULT 1");
   }
 
   private ensureColumn(table: string, column: string, definition: string): void {
@@ -1114,7 +1121,9 @@ function preferencesFromRow(row: Record<string, unknown>): PlayerPreferences {
     activityVisibility: (row.activity_visibility === "everyone" || row.activity_visibility === "nobody")
       ? row.activity_visibility
       : "friends",
-    friendOnlineNotifications: Boolean(row.friend_online_notifications)
+    friendOnlineNotifications: Boolean(row.friend_online_notifications),
+    shareAvatarInResults: row.share_avatar_in_results === undefined ? true : Boolean(row.share_avatar_in_results),
+    shareUsernameInResults: row.share_username_in_results === undefined ? true : Boolean(row.share_username_in_results)
   };
 }
 

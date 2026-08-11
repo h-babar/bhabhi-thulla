@@ -11,6 +11,7 @@ import type {
   ReactionMessage,
   RoomJoinResponse,
   RoomListItem,
+  RoomMode,
   RoomVisibility,
   ServerToClientEvents,
   Suit
@@ -19,6 +20,7 @@ import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { API_URL } from "../lib/api.js";
+import type { ShareableMatchResult } from "../lib/matchResults.js";
 import { primeBackgroundMusic, stopBackgroundMusic } from "../lib/music.js";
 import { playSound } from "../lib/sound.js";
 import { useEngagementStore } from "./engagementStore.js";
@@ -70,6 +72,15 @@ export interface TournamentLaunchOptions {
   turnSeconds?: number;
 }
 
+export interface MatchRematchContext {
+  roomMode?: RoomMode;
+  settings: GameSettings;
+  difficulty: BotDifficulty;
+  botCount: number;
+  continueTournamentStage?: boolean;
+  tournament?: TournamentLaunchOptions & { nationCode: string };
+}
+
 interface GameStore {
   socketStatus: SocketStatus;
   screen: Screen;
@@ -84,6 +95,9 @@ interface GameStore {
   roomCode?: string;
   state?: PublicGameState;
   activeGame?: ActiveGameSummary;
+  lastMatchResult?: ShareableMatchResult;
+  matchRematchContext?: MatchRematchContext;
+  matchResultOpen: boolean;
   rooms: RoomListItem[];
   error?: string;
   theme: ThemeMode;
@@ -116,6 +130,10 @@ interface GameStore {
   setTableTheme: (theme: TableTheme) => void;
   setTableLayout: (layout: TableLayout) => void;
   setWeatherTheme: (theme: WeatherTheme) => void;
+  captureMatchResult: (result: ShareableMatchResult, rematch: MatchRematchContext) => void;
+  openMatchResult: () => void;
+  closeMatchResult: () => void;
+  rematchLastGame: () => void;
   hydrateTheme: () => void;
   createRoom: (settings?: Partial<GameSettings>, visibility?: RoomVisibility) => void;
   joinRoom: (roomCode: string, asSpectator?: boolean) => void;
@@ -200,6 +218,9 @@ export const useGameStore = create<GameStore>()(
           sessionId: response.sessionId ?? get().sessionId,
           state: response.state,
           activeGame: undefined,
+          lastMatchResult: undefined,
+          matchRematchContext: undefined,
+          matchResultOpen: false,
           screen: "room",
           error: undefined
         });
@@ -411,6 +432,7 @@ export const useGameStore = create<GameStore>()(
         avatar: "Aero",
         accountType: "guest",
         rooms: [],
+        matchResultOpen: false,
         theme: initialTheme,
         muted: false,
         musicEnabled: true,
@@ -512,6 +534,37 @@ export const useGameStore = create<GameStore>()(
         setWeatherTheme: (weatherTheme) => {
           set({ weatherTheme });
           playSound("click", get().muted);
+        },
+        captureMatchResult: (lastMatchResult, matchRematchContext) => {
+          set({ lastMatchResult, matchRematchContext, matchResultOpen: false });
+        },
+        openMatchResult: () => {
+          if (get().lastMatchResult) set({ matchResultOpen: true });
+        },
+        closeMatchResult: () => set({ matchResultOpen: false }),
+        rematchLastGame: () => {
+          const rematch = get().matchRematchContext;
+          if (!rematch) {
+            set({ matchResultOpen: false });
+            return;
+          }
+          set({ matchResultOpen: false });
+          if (rematch.continueTournamentStage && get().roomCode && get().state) {
+            get().nextRound();
+            return;
+          }
+          get().leaveRoom();
+          window.setTimeout(() => {
+            if (rematch.roomMode === "quick") {
+              get().quickPlay(rematch.difficulty, rematch.settings);
+            } else if (rematch.roomMode === "bots") {
+              get().playWithBots(rematch.difficulty, rematch.botCount, rematch.settings);
+            } else if (rematch.roomMode === "tournament" && rematch.tournament) {
+              get().startTournament(rematch.tournament.nationCode, rematch.difficulty, rematch.tournament);
+            } else {
+              get().createRoom(rematch.settings, "private");
+            }
+          }, 80);
         },
         hydrateTheme: () => {
           applyThemeToDocument(get().theme);
@@ -763,7 +816,10 @@ export const useGameStore = create<GameStore>()(
         cardStyle: state.cardStyle,
         tableTheme: state.tableTheme,
         tableLayout: state.tableLayout,
-        weatherTheme: state.weatherTheme
+        weatherTheme: state.weatherTheme,
+        lastMatchResult: state.lastMatchResult,
+        matchRematchContext: state.matchRematchContext,
+        matchResultOpen: state.matchResultOpen
       })
     }
   )

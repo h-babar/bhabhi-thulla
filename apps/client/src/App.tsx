@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { GameTable } from "./components/GameTable.js";
 import { HomeScreen } from "./components/HomeScreen.js";
 import { TournamentsPage } from "./components/engagement/TournamentsPage.js";
+import { MatchResultModal } from "./components/results/MatchResultModal.js";
 import { installMusicUnlock } from "./lib/music.js";
 import { useGameStore } from "./store/gameStore.js";
 import { useAuthStore } from "./store/authStore.js";
@@ -21,10 +22,19 @@ export function App() {
   const setCardStyle = useGameStore((store) => store.setCardStyle);
   const setMuted = useGameStore((store) => store.setMuted);
   const setMusicEnabled = useGameStore((store) => store.setMusicEnabled);
+  const lastMatchResult = useGameStore((store) => store.lastMatchResult);
+  const matchRematchContext = useGameStore((store) => store.matchRematchContext);
+  const matchResultOpen = useGameStore((store) => store.matchResultOpen);
+  const openMatchResult = useGameStore((store) => store.openMatchResult);
+  const closeMatchResult = useGameStore((store) => store.closeMatchResult);
+  const rematchLastGame = useGameStore((store) => store.rematchLastGame);
+  const leaveRoom = useGameStore((store) => store.leaveRoom);
+  const goHome = useGameStore((store) => store.goHome);
   const authStatus = useAuthStore((store) => store.status);
   const guest = useAuthStore((store) => store.guest);
   const profile = useAuthStore((store) => store.profile);
   const idToken = useAuthStore((store) => store.idToken);
+  const autoOpenedResultRef = useRef<string | undefined>(undefined);
 
   const initialRoomCode = useMemo(() => {
     if (typeof window === "undefined") {
@@ -66,6 +76,17 @@ export function App() {
     }
   }, [authStatus, connect, guest, idToken, profile, setCardStyle, setMusicEnabled, setMuted, setTableTheme, syncIdentity]);
 
+  useEffect(() => {
+    if (
+      screen === "home"
+      && lastMatchResult
+      && autoOpenedResultRef.current !== lastMatchResult.publicMatchId
+    ) {
+      autoOpenedResultRef.current = lastMatchResult.publicMatchId;
+      openMatchResult();
+    }
+  }, [lastMatchResult, openMatchResult, screen]);
+
   return (
     <>
       {screen === "room" && state ? (
@@ -84,6 +105,19 @@ export function App() {
       >
         Developed by Hamza Babar
       </a>
+
+      <MatchResultModal
+        open={matchResultOpen}
+        result={lastMatchResult}
+        onClose={closeMatchResult}
+        onRematch={rematchLastGame}
+        onReturn={() => {
+          closeMatchResult();
+          if (state) leaveRoom();
+          else goHome();
+        }}
+        primaryActionLabel={matchRematchContext?.continueTournamentStage ? "Next Stage" : "Rematch"}
+      />
 
       <AnimatePresence>
         {error ? (

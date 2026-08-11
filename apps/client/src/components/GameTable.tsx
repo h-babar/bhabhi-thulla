@@ -36,8 +36,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { stopBackgroundMusic, updateBackgroundMusic, type MusicPhase } from "../lib/music.js";
+import { buildShareableMatchResult } from "../lib/matchResults.js";
 import { playerInitials } from "../lib/playerInitials.js";
 import { playSound } from "../lib/sound.js";
+import { useAuthStore } from "../store/authStore.js";
 import { useGameStore } from "../store/gameStore.js";
 import { CardView } from "./CardView.js";
 import { ChatPanel } from "./ChatPanel.js";
@@ -66,6 +68,8 @@ export function GameTable() {
   const setReady = useGameStore((store) => store.setReady);
   const startGame = useGameStore((store) => store.startGame);
   const nextRound = useGameStore((store) => store.nextRound);
+  const captureMatchResult = useGameStore((store) => store.captureMatchResult);
+  const openMatchResult = useGameStore((store) => store.openMatchResult);
   const playCards = useGameStore((store) => store.playCards);
   const takeNextPlayerCards = useGameStore((store) => store.takeNextPlayerCards);
   const updateRoomSettings = useGameStore((store) => store.updateRoomSettings);
@@ -75,6 +79,8 @@ export function GameTable() {
   const musicEnabled = useGameStore((store) => store.musicEnabled);
   const musicVolume = useGameStore((store) => store.musicVolume);
   const muted = useGameStore((store) => store.muted);
+  const guestProfile = useAuthStore((store) => store.guest);
+  const registeredProfile = useAuthStore((store) => store.profile);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quitOpen, setQuitOpen] = useState(false);
@@ -94,12 +100,64 @@ export function GameTable() {
   const hurryTurnRef = useRef<string | undefined>(undefined);
   const lastPlayedSoundRef = useRef<string | undefined>(undefined);
   const lastTurnSoundRef = useRef<string | undefined>(undefined);
+  const openedMatchResultRef = useRef<string | undefined>(undefined);
+  const sharePreferences = registeredProfile?.preferences ?? guestProfile?.preferences;
+  const shareableMatchResult = useMemo(
+    () => state
+      ? buildShareableMatchResult(state, {
+          currentPlayerId: playerId,
+          currentAvatarUrl: registeredProfile?.photoUrl,
+          includeCurrentAvatar: sharePreferences?.shareAvatarInResults ?? true,
+          currentUsername: registeredProfile?.username,
+          includeCurrentUsername: sharePreferences?.shareUsernameInResults ?? true
+        })
+      : undefined,
+    [
+      playerId,
+      registeredProfile?.photoUrl,
+      registeredProfile?.username,
+      sharePreferences?.shareAvatarInResults,
+      sharePreferences?.shareUsernameInResults,
+      state
+    ]
+  );
 
   useEffect(() => {
     const updateViewportWidth = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", updateViewportWidth, { passive: true });
     return () => window.removeEventListener("resize", updateViewportWidth);
   }, []);
+
+  useEffect(() => {
+    const resultId = shareableMatchResult?.publicMatchId;
+    if (!resultId || !state || openedMatchResultRef.current === resultId) return undefined;
+    openedMatchResultRef.current = resultId;
+    const firstBot = state.players.find((player) => player.isBot);
+    captureMatchResult(shareableMatchResult, {
+      roomMode: state.roomMode,
+      settings: { ...state.settings },
+      difficulty: firstBot?.botDifficulty ?? state.tournament?.difficulty ?? "normal",
+      botCount: Math.max(1, state.players.filter((player) => player.isBot).length),
+      continueTournamentStage: state.tournament?.status === "active" && state.status !== "game_over",
+      tournament: state.tournament
+        ? {
+            nationCode: state.tournament.playerNationCode,
+            eventId: state.tournament.eventId,
+            eventName: state.tournament.eventName,
+            reward: state.tournament.reward,
+            offline: state.tournament.offline,
+            turnSeconds: state.settings.turnSeconds
+          }
+        : undefined
+    });
+    const celebrationDelay = state?.winCelebration
+      ? Math.max(350, state.winCelebration.endsAt - Date.now() + 250)
+      : 500;
+    const timeout = window.setTimeout(() => {
+      openMatchResult();
+    }, celebrationDelay);
+    return () => window.clearTimeout(timeout);
+  }, [captureMatchResult, openMatchResult, shareableMatchResult, state]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -551,6 +609,7 @@ export function GameTable() {
               isHost={isHost}
               nextRound={nextRound}
               leaveRoom={leaveRoom}
+              onOpenResult={shareableMatchResult ? openMatchResult : undefined}
             />
           </div>
 
@@ -1950,12 +2009,14 @@ function RoundSummaryPanel({
   state,
   isHost,
   nextRound,
-  leaveRoom
+  leaveRoom,
+  onOpenResult
 }: {
   state: PublicGameState;
   isHost: boolean;
   nextRound: () => void;
   leaveRoom: () => void;
+  onOpenResult?: () => void;
 }) {
   const summary = state.roundSummaries[0];
   if (!summary || state.status === "playing") {
@@ -1992,15 +2053,31 @@ function RoundSummaryPanel({
           </h2>
         </div>
         {matchComplete ? (
-          <button className="primary-button py-2.5" onClick={leaveRoom}>
-            <Home size={17} />
-            {nextButtonLabel}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {onOpenResult ? (
+              <button className="secondary-button py-2.5" onClick={onOpenResult}>
+                <Share2 size={17} />
+                Share Result
+              </button>
+            ) : null}
+            <button className="primary-button py-2.5" onClick={leaveRoom}>
+              <Home size={17} />
+              {nextButtonLabel}
+            </button>
+          </div>
         ) : isHost ? (
-          <button className="primary-button py-2.5" onClick={nextRound}>
-            <RotateCcw size={17} />
-            {nextButtonLabel}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {onOpenResult ? (
+              <button className="secondary-button py-2.5" onClick={onOpenResult}>
+                <Share2 size={17} />
+                Share Result
+              </button>
+            ) : null}
+            <button className="primary-button py-2.5" onClick={nextRound}>
+              <RotateCcw size={17} />
+              {nextButtonLabel}
+            </button>
+          </div>
         ) : (
           <p className="rounded-full bg-slate-950/5 px-3 py-2 text-sm font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
             Waiting for host

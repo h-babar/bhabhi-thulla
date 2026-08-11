@@ -37,6 +37,29 @@ test("returning Google users receive the same permanent profile", () => {
   });
 });
 
+test("share-card privacy preferences persist with safe defaults", () => {
+  withDatabase((database) => {
+    const profile = database.getOrCreateGoogleProfile({
+      providerUserId: "google-share-card",
+      email: "share@example.com",
+      displayName: "Share Player"
+    });
+
+    assert.equal(profile.preferences.shareAvatarInResults, true);
+    assert.equal(profile.preferences.shareUsernameInResults, true);
+
+    const updated = database.updatePlayerProfile(profile.id, {
+      preferences: {
+        shareAvatarInResults: false,
+        shareUsernameInResults: false
+      }
+    });
+
+    assert.equal(updated.preferences.shareAvatarInResults, false);
+    assert.equal(updated.preferences.shareUsernameInResults, false);
+  });
+});
+
 test("friend requests are canonical, reciprocal, and duplicate-safe", () => {
   withDatabase((database) => {
     const alice = database.getOrCreateGoogleProfile({ providerUserId: "friend-a", email: "a@example.com", displayName: "Alice Ace" });

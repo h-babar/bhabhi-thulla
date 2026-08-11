@@ -6,9 +6,11 @@ import {
   Moon,
   Music,
   Save,
+  Share2,
   Snowflake,
   Sparkles,
   Sun,
+  UserRound,
   Volume2,
   VolumeX,
   X
@@ -100,6 +102,13 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const registeredProfile = useAuthStore((store) => store.profile);
   const updateGuest = useAuthStore((store) => store.updateGuest);
   const updateRegistered = useAuthStore((store) => store.updateRegistered);
+  const activePreferences = registeredProfile?.preferences ?? guestProfile?.preferences;
+  const [shareAvatarInResults, setShareAvatarInResults] = useState(
+    activePreferences?.shareAvatarInResults ?? true
+  );
+  const [shareUsernameInResults, setShareUsernameInResults] = useState(
+    activePreferences?.shareUsernameInResults ?? true
+  );
   const setTheme = useGameStore((store) => store.setTheme);
   const setMuted = useGameStore((store) => store.setMuted);
   const setMusicEnabled = useGameStore((store) => store.setMusicEnabled);
@@ -109,15 +118,20 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const setTableLayout = useGameStore((store) => store.setTableLayout);
   const setWeatherTheme = useGameStore((store) => store.setWeatherTheme);
   useEffect(() => {
-    if (open) setSaved(false);
-  }, [open]);
+    if (!open) return;
+    setSaved(false);
+    setShareAvatarInResults(activePreferences?.shareAvatarInResults ?? true);
+    setShareUsernameInResults(activePreferences?.shareUsernameInResults ?? true);
+  }, [activePreferences?.shareAvatarInResults, activePreferences?.shareUsernameInResults, open]);
 
   const saveSettings = async () => {
     const preferences = {
       cardBack: cardStyle,
       tableTheme,
       soundEnabled: !muted,
-      musicEnabled
+      musicEnabled,
+      shareAvatarInResults,
+      shareUsernameInResults
     };
 
     setSaving(true);
@@ -292,6 +306,42 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               onChange={(event) => setMusicVolume(Number(event.target.value))}
             />
           </label>
+        </div>
+
+        <div className="settings-share-privacy settings-section">
+          <div className="settings-share-privacy-heading">
+            <Share2 size={18} />
+            <div>
+              <p className="settings-section-title">Shared result privacy</p>
+              <small>Choose what appears on the match card you share.</small>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="settings-privacy-toggle"
+            aria-pressed={shareAvatarInResults}
+            onClick={() => setShareAvatarInResults((current) => !current)}
+          >
+            <UserRound size={18} />
+            <span>
+              <strong>Include my profile avatar</strong>
+              <small>Uses initials automatically if the image cannot load.</small>
+            </span>
+            <b>{shareAvatarInResults ? "On" : "Off"}</b>
+          </button>
+          <button
+            type="button"
+            className="settings-privacy-toggle"
+            aria-pressed={shareUsernameInResults}
+            onClick={() => setShareUsernameInResults((current) => !current)}
+          >
+            <UserRound size={18} />
+            <span>
+              <strong>Allow my username in shared results</strong>
+              <small>When off, only your in-game display name is used.</small>
+            </span>
+            <b>{shareUsernameInResults ? "On" : "Off"}</b>
+          </button>
         </div>
       </div>
     </Modal>
