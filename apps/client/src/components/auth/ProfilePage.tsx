@@ -7,6 +7,7 @@ import { EditProfileModal } from "./EditProfileModal.js";
 import { MatchHistoryList } from "./MatchHistoryList.js";
 import { PlayerAvatar } from "./PlayerAvatar.js";
 import { PlayerStatsPanel } from "./PlayerStatsPanel.js";
+import { profileAvatarSource } from "../../lib/profileAvatar.js";
 
 type ProfileTab = "overview" | "achievements" | "matches" | "customise";
 
@@ -51,8 +52,7 @@ export function ProfilePage() {
           <header className="profile-hero">
             <PlayerAvatar
               name={current.displayName}
-              avatarId={profile?.selectedAvatarId ?? current.avatarId}
-              photoUrl={profile?.photoUrl}
+              {...profileAvatarSource(profile, current.avatarId)}
               frame={profile?.profileFrameId}
               size="lg"
               onlineState="online"

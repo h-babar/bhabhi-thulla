@@ -7,30 +7,20 @@ import type {
 } from "@getaway-cards/shared";
 import { BUILT_IN_AVATAR_IDS } from "@getaway-cards/shared";
 import { Router, type NextFunction, type Request, type Response } from "express";
-import multer from "multer";
 import { isGoogleAuthEnabled, profileForDecodedUser, requireAuth, type AuthenticatedRequest } from "./auth.js";
 import type { GameDatabase } from "./db.js";
-import { ProfileImageStorage, validateAndNormalizeProfileImage } from "./profileImageStorage.js";
 
 const blockedNameFragments = ["admin", "moderator", "support", "fuck", "shit", "nazi"];
 const tableThemes = new Set(["casino", "emerald", "midnight", "royal", "neon", "mahogany", "velvet", "ice", "obsidian", "sapphire", "crimson", "platinum", "jungle", "aurora", "monaco", "blackGold", "oxford", "amethyst", "championship", "bordeaux", "carbon", "pearl"]);
 const cardStyles = new Set(["classic", "royal", "midnight", "neon", "minimal", "heritage", "carbon", "championship"]);
 const profileFrames = new Set(["default", "bronze", "silver", "gold", "platinum", "diamond", "master", "tournament_champion"]);
-const imageTypes = new Set(["custom", "avatar", "google", "initials"]);
+const imageTypes = new Set(["avatar", "google", "initials"]);
 const imageVisibilities = new Set(["everyone", "friends", "nobody"]);
-const profileUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { files: 1, fileSize: 5 * 1024 * 1024, fields: 2 },
-  fileFilter: (_request, file, callback) => {
-    callback(null, ["image/jpeg", "image/png", "image/webp"].includes(file.mimetype));
-  }
-});
 
-export function createProfileRouter(db: GameDatabase, imageStorage = new ProfileImageStorage()): Router {
+export function createProfileRouter(db: GameDatabase): Router {
   const router = Router();
   const usernameLimit = createRateLimiter(20, 60_000);
   const updateLimit = createRateLimiter(12, 60_000);
-  const uploadLimit = createRateLimiter(6, 10 * 60_000);
 
   router.get("/auth/status", (_request, response) => {
     response.json({ googleEnabled: isGoogleAuthEnabled() });
@@ -91,52 +81,6 @@ export function createProfileRouter(db: GameDatabase, imageStorage = new Profile
   );
 
   router.post(
-    "/profile/image",
-    requireAuth(),
-    uploadLimit,
-    profileUpload.single("image"),
-    async (request: AuthenticatedRequest, response: Response<AuthProfileResponse>) => {
-      const current = db.findProfileByProviderUserId(request.authUser!.uid) ?? profileForDecodedUser(db, request.authUser!);
-      if (!request.file) {
-        response.status(400).json({ ok: false, error: "Choose a JPG, PNG, or WebP image to upload." });
-        return;
-      }
-      try {
-        const normalized = await validateAndNormalizeProfileImage(request.file);
-        const previousKey = db.getCustomProfilePhotoKey(current.id);
-        const publicOrigin = `${request.protocol}://${request.get("host")}`;
-        const stored = await imageStorage.save(current.id, normalized.buffer, publicOrigin);
-        const profile = db.setCustomProfilePhoto(current.id, stored.url, stored.key);
-        if (!profile) {
-          await imageStorage.remove(stored.key);
-          throw new Error("The profile image could not be saved.");
-        }
-        await imageStorage.remove(previousKey).catch(() => undefined);
-        response.json({ ok: true, profile });
-      } catch (error) {
-        response.status(400).json({ ok: false, error: errorMessage(error, "The profile image could not be uploaded.") });
-      }
-    }
-  );
-
-  router.delete(
-    "/profile/image",
-    requireAuth(),
-    uploadLimit,
-    async (request: AuthenticatedRequest, response: Response<AuthProfileResponse>) => {
-      const current = db.findProfileByProviderUserId(request.authUser!.uid) ?? profileForDecodedUser(db, request.authUser!);
-      const previousKey = db.getCustomProfilePhotoKey(current.id);
-      try {
-        const profile = db.clearCustomProfilePhoto(current.id);
-        await imageStorage.remove(previousKey).catch(() => undefined);
-        response.json({ ok: true, profile });
-      } catch (error) {
-        response.status(400).json({ ok: false, error: errorMessage(error, "The uploaded photo could not be removed.") });
-      }
-    }
-  );
-
-  router.post(
     "/profile/merge-guest",
     requireAuth(),
     updateLimit,
@@ -150,19 +94,6 @@ export function createProfileRouter(db: GameDatabase, imageStorage = new Profile
       response.json({ ok: true, profile: db.mergeGuestProgress(current.id, guest) });
     }
   );
-
-  router.use((error: unknown, _request: Request, response: Response, next: NextFunction) => {
-    if (error instanceof multer.MulterError) {
-      response.status(400).json({
-        ok: false,
-        error: error.code === "LIMIT_FILE_SIZE"
-          ? "Profile photos must be no larger than 5 MB."
-          : "The profile photo upload was rejected."
-      });
-      return;
-    }
-    next(error);
-  });
 
   return router;
 }
@@ -263,10 +194,6 @@ function parsePreferences(input: Partial<PlayerPreferences>): Partial<PlayerPref
 
 function cleanText(value: string, maxLength: number): string {
   return String(value).replace(/[<>\u0000-\u001f]/g, "").trim().replace(/\s+/g, " ").slice(0, maxLength);
-}
-
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
 }
 
 function isFrameUnlocked(frameId: string, level: number, tournamentWins: number): boolean {

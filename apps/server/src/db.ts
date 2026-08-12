@@ -1231,11 +1231,11 @@ function normalizeImageVisibility(value: unknown): PlayerProfile["profileImageVi
 }
 
 function resolveActiveImageType(row: Pick<UserRow, "active_image_type" | "custom_photo_url" | "google_photo_url" | "avatar_id">): PlayerProfile["activeImageType"] {
-  if (row.active_image_type === "custom" && row.custom_photo_url) return "custom";
   if (row.active_image_type === "avatar" && row.avatar_id) return "avatar";
   if (row.active_image_type === "google" && row.google_photo_url) return "google";
   if (row.active_image_type === "initials") return "initials";
-  if (row.custom_photo_url) return "custom";
+  // Keep old upload metadata untouched so the feature can be restored later,
+  // but never serve it while profiles use the free avatar sources.
   if (row.avatar_id) return "avatar";
   if (row.google_photo_url) return "google";
   return "initials";
@@ -1243,7 +1243,6 @@ function resolveActiveImageType(row: Pick<UserRow, "active_image_type" | "custom
 
 function resolveActiveImageUrl(row: Pick<UserRow, "active_image_type" | "custom_photo_url" | "google_photo_url" | "avatar_id">): string | undefined {
   const active = resolveActiveImageType(row);
-  if (active === "custom") return row.custom_photo_url ?? undefined;
   if (active === "google") return row.google_photo_url ?? undefined;
   return undefined;
 }

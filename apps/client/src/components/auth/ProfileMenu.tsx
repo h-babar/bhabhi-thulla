@@ -4,6 +4,7 @@ import { useAuthStore } from "../../store/authStore.js";
 import { PlayerAvatar } from "./PlayerAvatar.js";
 import { useGameStore } from "../../store/gameStore.js";
 import { useFriendsStore } from "../../store/friendsStore.js";
+import { profileAvatarSource } from "../../lib/profileAvatar.js";
 
 interface ProfileMenuProps {
   compact?: boolean;
@@ -42,14 +43,14 @@ export function ProfileMenu({ compact = false, onSettings }: ProfileMenuProps) {
   return (
     <div className="profile-menu-root" ref={rootRef}>
       <button className={`profile-menu-trigger ${compact ? "is-compact" : ""}`} onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <PlayerAvatar name={current.displayName} avatarId={profile?.selectedAvatarId ?? current.avatarId} photoUrl={profile?.photoUrl} frame={profile?.profileFrameId} size="sm" onlineState="online" isGuest={!profile} />
+        <PlayerAvatar name={current.displayName} {...profileAvatarSource(profile, current.avatarId)} frame={profile?.profileFrameId} size="sm" onlineState="online" isGuest={!profile} />
         {!compact ? <span><strong>{current.displayName}</strong><small>{profile ? `@${profile.username}` : "Guest"}</small></span> : null}
         <ChevronDown size={15} />
       </button>
       {open ? (
         <div className="profile-menu-popover">
           <header>
-            <PlayerAvatar name={current.displayName} avatarId={profile?.selectedAvatarId ?? current.avatarId} photoUrl={profile?.photoUrl} frame={profile?.profileFrameId} size="md" onlineState="online" level={profile?.level} rank={profile?.rank} showLevel={Boolean(profile)} isGuest={!profile} />
+            <PlayerAvatar name={current.displayName} {...profileAvatarSource(profile, current.avatarId)} frame={profile?.profileFrameId} size="md" onlineState="online" level={profile?.level} rank={profile?.rank} showLevel={Boolean(profile)} isGuest={!profile} />
             <div><strong>{current.displayName}</strong><span>{profile ? `@${profile.username}` : "Guest account"}</span></div>
             {profile ? <b>{profile.rank}</b> : <b>Guest</b>}
           </header>

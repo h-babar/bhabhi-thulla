@@ -60,7 +60,7 @@ test("share-card privacy preferences persist with safe defaults", () => {
   });
 });
 
-test("profile image sources remain independent and custom removal preserves Google photo", () => {
+test("legacy custom images stay stored but resolve to a free profile source", () => {
   withDatabase((database) => {
     const profile = database.getOrCreateGoogleProfile({
       providerUserId: "google-avatar-sources",
@@ -81,8 +81,9 @@ test("profile image sources remain independent and custom removal preserves Goog
     assert.equal(avatar.profileImageVisibility, "friends");
 
     const custom = database.setCustomProfilePhoto(profile.id, "https://cdn.example.com/custom.webp", "avatars/player/custom.webp");
-    assert.equal(custom.activeImageType, "custom");
-    assert.equal(custom.photoUrl, "https://cdn.example.com/custom.webp");
+    assert.equal(custom.customPhotoUrl, "https://cdn.example.com/custom.webp");
+    assert.equal(custom.activeImageType, "avatar");
+    assert.equal(custom.photoUrl, undefined);
     const cleared = database.clearCustomProfilePhoto(profile.id);
     assert.equal(cleared.customPhotoUrl, undefined);
     assert.equal(cleared.activeImageType, "avatar");

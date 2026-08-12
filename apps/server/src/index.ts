@@ -62,12 +62,6 @@ app.use(
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan(config.nodeEnv === "production" ? "combined" : "dev"));
-app.use("/uploads/profile", express.static(config.profileImageDir, {
-  fallthrough: false,
-  immutable: true,
-  maxAge: "1y",
-  dotfiles: "deny"
-}));
 
 app.get("/health", (_request, response) => {
   response.json({

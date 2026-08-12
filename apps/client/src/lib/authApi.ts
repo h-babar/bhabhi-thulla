@@ -24,27 +24,6 @@ export async function updateMyProfile(
   });
 }
 
-export async function uploadMyProfileImage(
-  token: string,
-  image: Blob,
-  fileName = "profile.webp"
-): Promise<AuthProfileResponse> {
-  const body = new FormData();
-  body.append("image", image, fileName);
-  const response = await fetch(`${API_URL}/api/profile/image`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body
-  });
-  const data = await response.json() as AuthProfileResponse;
-  if (!response.ok) throw new Error(data.error ?? "Profile image upload failed.");
-  return data;
-}
-
-export async function deleteMyProfileImage(token: string): Promise<AuthProfileResponse> {
-  return authRequest<AuthProfileResponse>("/api/profile/image", token, { method: "DELETE" });
-}
-
 export async function mergeGuestProgress(
   token: string,
   input: GuestProgressTransfer

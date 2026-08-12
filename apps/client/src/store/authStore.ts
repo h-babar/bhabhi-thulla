@@ -18,11 +18,9 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
   checkUsername,
-  deleteMyProfileImage,
   exchangeGoogleToken,
   mergeGuestProgress,
-  updateMyProfile,
-  uploadMyProfileImage
+  updateMyProfile
 } from "../lib/authApi.js";
 import { getFirebaseAuth, googleProvider, isFirebaseConfigured } from "../lib/firebase.js";
 
@@ -56,8 +54,6 @@ interface AuthStore {
   updateGuest: (input: { displayName?: string; avatarId?: string; preferences?: Partial<PlayerPreferences> }) => void;
   recordGuestMatch: (result: { won: boolean; wasBhabhi: boolean; tricksWon: number; tournamentWin: boolean }) => void;
   updateRegistered: (input: UpdatePlayerProfileInput) => Promise<boolean>;
-  uploadProfileImage: (image: Blob) => Promise<boolean>;
-  deleteCustomProfileImage: () => Promise<boolean>;
   checkUsername: (username: string) => Promise<UsernameAvailabilityResponse>;
   logout: () => Promise<void>;
   changePlayer: () => Promise<void>;
@@ -189,32 +185,6 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const response = await updateMyProfile(token, input);
           if (!response.profile) throw new Error(response.error ?? "Profile update failed.");
-          set({ profile: response.profile, error: undefined });
-          return true;
-        } catch (error) {
-          set({ error: authErrorMessage(error) });
-          return false;
-        }
-      },
-      uploadProfileImage: async (image) => {
-        const token = get().idToken;
-        if (!token) return false;
-        try {
-          const response = await uploadMyProfileImage(token, image);
-          if (!response.profile) throw new Error(response.error ?? "Profile image upload failed.");
-          set({ profile: response.profile, error: undefined });
-          return true;
-        } catch (error) {
-          set({ error: authErrorMessage(error) });
-          return false;
-        }
-      },
-      deleteCustomProfileImage: async () => {
-        const token = get().idToken;
-        if (!token) return false;
-        try {
-          const response = await deleteMyProfileImage(token);
-          if (!response.profile) throw new Error(response.error ?? "Uploaded photo removal failed.");
           set({ profile: response.profile, error: undefined });
           return true;
         } catch (error) {

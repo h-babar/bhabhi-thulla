@@ -26,10 +26,7 @@ export function initializeFirebaseAdmin(): boolean {
     return true;
   }
 
-  initializeApp({
-    projectId: config.firebaseProjectId,
-    storageBucket: config.firebaseStorageBucket
-  });
+  initializeApp({ projectId: config.firebaseProjectId });
   firebaseReady = true;
   return true;
 }

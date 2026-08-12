@@ -239,6 +239,7 @@ export function GameTable() {
     !isTableRevealPhase;
   const hand = me?.hand ?? [];
   const displayedHand = useMemo(() => sortHandForDisplay(hand, handSortMode), [hand, handSortMode]);
+  const mobileTwoRowHand = viewportWidth <= 600 && displayedHand.length > 9;
   const responsiveHandStyle = getResponsiveHandStyle(displayedHand.length, viewportWidth);
   const activePlayer = state.players.find((player) => player.id === state.activePlayerId);
   const nextCardTakeTarget =
@@ -580,7 +581,10 @@ export function GameTable() {
                 </div>
               ) : (
                 <div
-                  className="player-hand-safe-zone hand-scroll hand-fan flex min-h-[5.75rem] gap-1.5 overflow-x-auto pb-1.5 pt-2 sm:min-h-[6.35rem] sm:gap-2"
+                  className={clsx(
+                    "player-hand-safe-zone hand-scroll hand-fan flex min-h-[5.75rem] gap-1.5 overflow-x-auto pb-1.5 pt-2 sm:min-h-[6.35rem] sm:gap-2",
+                    mobileTwoRowHand && "is-two-row-hand"
+                  )}
                   data-card-count={displayedHand.length}
                   aria-label="Your cards"
                   style={responsiveHandStyle}
@@ -590,9 +594,9 @@ export function GameTable() {
                       key={card.id}
                       card={card}
                       compact={displayedHand.length > 10}
-                      fanIndex={index}
-                      fanTotal={displayedHand.length}
-                      mobileFan={viewportWidth <= 600}
+                      fanIndex={mobileTwoRowHand ? undefined : index}
+                      fanTotal={mobileTwoRowHand ? undefined : displayedHand.length}
+                      mobileFan={viewportWidth <= 600 && !mobileTwoRowHand}
                       selected={selectedIds.includes(card.id)}
                       playable={isMyTurn && isCardPlayableForState(state, hand, card)}
                       disabled={!isMyTurn || !isCardPlayableForState(state, hand, card)}
@@ -2350,14 +2354,19 @@ function getResponsiveHandStyle(cardCount: number, viewportWidth: number): CSSPr
     return {};
   }
 
-  const availableWidth = Math.max(240, viewportWidth - 50);
-  const cardWidth = Math.min(58, Math.max(44, viewportWidth * 0.132));
-  const visibleStep = cardCount === 1
+  const twoRows = viewportWidth <= 600 && cardCount > 9;
+  const cardsPerRow = twoRows ? Math.ceil(cardCount / 2) : cardCount;
+  const availableWidth = Math.max(240, viewportWidth - 36);
+  const cardWidth = twoRows
+    ? Math.min(46, Math.max(40, viewportWidth * 0.118))
+    : Math.min(58, Math.max(42, viewportWidth * 0.13));
+  const visibleStep = cardsPerRow === 1
     ? cardWidth
-    : Math.min(cardWidth * 0.8, (availableWidth - cardWidth) / (cardCount - 1));
+    : Math.min(cardWidth * 0.78, (availableWidth - cardWidth) / (cardsPerRow - 1));
 
   return {
     "--mobile-hand-card-width": `${cardWidth}px`,
-    "--mobile-hand-card-overlap": `${visibleStep - cardWidth}px`
+    "--mobile-hand-card-overlap": `${visibleStep - cardWidth}px`,
+    "--mobile-hand-row-width": `${cardsPerRow * cardWidth + Math.max(0, cardsPerRow - 1) * 2}px`
   } as CSSProperties;
 }

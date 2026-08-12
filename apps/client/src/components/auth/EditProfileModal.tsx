@@ -6,6 +6,7 @@ import { Modal } from "../Modal.js";
 import { PlayerAvatar } from "./PlayerAvatar.js";
 import { ProfileFrameSelector } from "./ProfileFrameSelector.js";
 import { ProfileImageEditor } from "./ProfileImageEditor.js";
+import { profileAvatarSource } from "../../lib/profileAvatar.js";
 
 interface EditProfileModalProps {
   open: boolean;
@@ -122,12 +123,11 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
           <div>
             <PlayerAvatar
               name={form.displayName ?? current.displayName}
-              avatarId={profile?.selectedAvatarId ?? current.avatarId}
-              photoUrl={profile?.photoUrl}
+              {...profileAvatarSource(profile, current.avatarId)}
               frame={form.profileFrameId ?? profile?.profileFrameId}
               size="md"
             />
-            <span><strong>{profile ? imageTypeLabel(profile.activeImageType) : "Game avatar"}</strong><small>Photo, avatar, Google image or initials</small></span>
+            <span><strong>{profile ? imageTypeLabel(profile.activeImageType) : "Game avatar"}</strong><small>Game avatar, Google image, or initials</small></span>
             <button type="button" aria-label="Change profile picture" onClick={() => setImageEditorOpen(true)}><Image size={16} /> Change</button>
           </div>
         </div>
@@ -136,8 +136,8 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
           <ProfileFrameSelector
             name={form.displayName ?? current.displayName}
             value={form.profileFrameId ?? profile?.profileFrameId}
-            avatarId={profile?.selectedAvatarId ?? current.avatarId}
-            photoUrl={profile?.photoUrl}
+            avatarId={profileAvatarSource(profile, current.avatarId).avatarId}
+            photoUrl={profileAvatarSource(profile, current.avatarId).photoUrl}
             level={profile?.level}
             tournamentWins={profile?.stats.tournamentWins}
             onChange={(profileFrameId) => setForm({ ...form, profileFrameId })}
@@ -154,7 +154,6 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
 }
 
 function imageTypeLabel(type: string): string {
-  if (type === "custom") return "Uploaded photo";
   if (type === "google") return "Google photo";
   if (type === "initials") return "Initials";
   return "Game avatar";

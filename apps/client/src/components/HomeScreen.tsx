@@ -41,6 +41,7 @@ import { SettingsModal } from "./SettingsModal.js";
 import { ProfileMenu } from "./auth/ProfileMenu.js";
 import { PlayerAvatar } from "./auth/PlayerAvatar.js";
 import { useAuthStore } from "../store/authStore.js";
+import { profileAvatarSource } from "../lib/profileAvatar.js";
 import { FriendsButton } from "./friends/FriendsButton.js";
 import { FriendsOnlineWidget } from "./friends/FriendsOnlineWidget.js";
 
@@ -263,7 +264,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
 
           <aside className="home-command-deck">
             <button className="home-profile-row" onClick={openProfile}>
-              <PlayerAvatar name={account?.displayName ?? username} avatarId={authProfile?.selectedAvatarId ?? account?.avatarId ?? avatar} photoUrl={authProfile?.photoUrl} frame={authProfile?.profileFrameId} size="md" onlineState="online" level={authProfile?.level} rank={authProfile?.rank} showLevel={Boolean(authProfile)} isGuest={!authProfile} />
+              <PlayerAvatar name={account?.displayName ?? username} {...profileAvatarSource(authProfile, account?.avatarId ?? avatar)} frame={authProfile?.profileFrameId} size="md" onlineState="online" level={authProfile?.level} rank={authProfile?.rank} showLevel={Boolean(authProfile)} isGuest={!authProfile} />
               <span className="min-w-0 flex-1 text-left">
                 <p>{authProfile ? `${authProfile.rank} - Level ${authProfile.level}` : "Guest player"}</p>
                 <strong>{account?.displayName ?? username}</strong>

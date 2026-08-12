@@ -16037,3 +16037,94 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     inset 0 -3.4rem 6rem rgba(0, 0, 0, 0.32),
     0 1.4rem 3rem rgba(0, 0, 0, 0.28) !important;
 }
+
+/* Profile identity and portrait play polish. */
+.home-profile-row > .player-avatar-shell {
+  display: inline-grid !important;
+  width: var(--avatar-size) !important;
+  min-width: var(--avatar-size) !important;
+  height: var(--avatar-size) !important;
+  flex: 0 0 var(--avatar-size) !important;
+  place-items: center !important;
+  align-content: normal !important;
+  gap: 0 !important;
+  aspect-ratio: 1;
+  z-index: 2;
+}
+
+.home-profile-row > span:not(.player-avatar-shell) {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .playing-hud-left > .turn-timer-badge {
+    position: fixed !important;
+    top: calc(max(0.45rem, env(safe-area-inset-top)) + 4.15rem) !important;
+    left: max(0.65rem, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    width: 3.15rem !important;
+    min-width: 3.15rem !important;
+    max-width: 3.15rem !important;
+    height: 3.15rem !important;
+    margin: 0 !important;
+    padding: 0.2rem !important;
+    transform: none !important;
+    border-radius: 50% !important;
+    z-index: 138 !important;
+  }
+
+  .playing-hud-left > .turn-timer-badge .timer-ring {
+    width: 2.55rem !important;
+    height: 2.55rem !important;
+  }
+
+  .playing-hud-left > .turn-timer-badge > div:last-child {
+    display: none !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone.is-two-row-hand {
+    width: min(var(--mobile-hand-row-width), calc(100% - 0.7rem)) !important;
+    max-width: min(var(--mobile-hand-row-width), calc(100% - 0.7rem)) !important;
+    height: calc(100% - var(--mobile-action-bar-height) - 0.25rem) !important;
+    margin-inline: auto !important;
+    padding: 0.35rem 0 0 !important;
+    align-content: flex-start !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    column-gap: 2px !important;
+    row-gap: 1px !important;
+    overflow: visible !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone.is-two-row-hand .card-face,
+  .active-hand-dock .player-hand-safe-zone.is-two-row-hand .card-face:first-child {
+    width: var(--mobile-hand-card-width) !important;
+    flex: 0 0 var(--mobile-hand-card-width) !important;
+    margin: 0 !important;
+    border-radius: 0.52rem !important;
+  }
+
+  .player-hand-safe-zone.is-two-row-hand .card-corner-top {
+    position: absolute !important;
+    top: 0.3rem !important;
+    left: 0.3rem !important;
+    z-index: 4;
+    display: grid !important;
+    gap: 0 !important;
+    justify-items: start;
+    font-size: 0.82rem !important;
+    line-height: 0.78 !important;
+  }
+
+  .player-hand-safe-zone.is-two-row-hand .card-corner-bottom {
+    display: none !important;
+  }
+
+  .player-hand-safe-zone.is-two-row-hand .card-pip-center {
+    padding-top: 0.5rem;
+    font-size: 1.55rem !important;
+  }
+}
