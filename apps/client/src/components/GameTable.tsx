@@ -48,6 +48,7 @@ import { RulesModal } from "./RulesModal.js";
 import { ScoreBoard } from "./ScoreBoard.js";
 import { SettingsModal } from "./SettingsModal.js";
 import { ProfileMenu } from "./auth/ProfileMenu.js";
+import { PlayerAvatar } from "./auth/PlayerAvatar.js";
 import { FriendsButton } from "./friends/FriendsButton.js";
 import { PlayerVoiceControl } from "../voice/PlayerVoiceControl.js";
 import { VoiceControls } from "../voice/VoiceControls.js";
@@ -913,13 +914,23 @@ function SeatIdentity({
         <p className="seat-player-status">{statusText}</p>
       </div>
       <div className="seat-avatar-token">
-        {playerInitials(player.username)}
+        <PlayerAvatar
+          name={player.username}
+          avatarId={player.avatar}
+          photoUrl={player.avatarUrl}
+          frame={player.profileFrameId}
+          size="md"
+          onlineState={player.connected ? (active ? "busy" : "online") : "offline"}
+          isSpeaking={voiceSpeaking}
+          isCurrentTurn={active}
+          isHost={host}
+          isGuest={player.accountType === "guest"}
+          isBot={player.isBot}
+          isDisconnected={!player.connected}
+          level={player.level}
+          rank={player.rankBadge}
+        />
         <span className="seat-count-bubble">{player.handCount}</span>
-        {!player.connected ? (
-          <span className="seat-offline-dot">
-            <WifiOff size={12} />
-          </span>
-        ) : null}
       </div>
     </div>
   );

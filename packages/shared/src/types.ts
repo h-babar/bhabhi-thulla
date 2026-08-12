@@ -84,6 +84,10 @@ export interface NewPlayerInput {
   sessionId?: string;
   username: string;
   avatar: string;
+  avatarUrl?: string;
+  profileFrameId?: string;
+  profileImageVisibility?: import("./profile.js").ProfileImageVisibility;
+  level?: number;
   isBot?: boolean;
   botDifficulty?: BotDifficulty;
   accountType?: AccountType;
@@ -96,6 +100,10 @@ export interface PlayerState {
   sessionId?: string;
   username: string;
   avatar: string;
+  avatarUrl?: string;
+  profileFrameId?: string;
+  profileImageVisibility: import("./profile.js").ProfileImageVisibility;
+  level?: number;
   hand: Card[];
   score: number;
   roundWins: number;
@@ -126,9 +134,14 @@ export interface PlayerState {
 export interface SpectatorState {
   id: string;
   sessionId?: string;
+  profileId?: string;
   replacedPlayerId?: string;
   username: string;
   avatar: string;
+  avatarUrl?: string;
+  profileFrameId?: string;
+  profileImageVisibility: import("./profile.js").ProfileImageVisibility;
+  level?: number;
   connected: boolean;
   joinedAt: number;
   lastSeenAt: number;
@@ -311,7 +324,7 @@ export interface PublicPlayerState
 }
 
 export interface PublicSpectatorState
-  extends Omit<SpectatorState, "sessionId"> {
+  extends Omit<SpectatorState, "sessionId" | "profileId"> {
   isYou: boolean;
 }
 

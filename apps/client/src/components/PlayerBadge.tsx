@@ -1,7 +1,7 @@
 import type { PublicPlayerState } from "@getaway-cards/shared";
 import clsx from "clsx";
-import { Bot, Crown, WifiOff } from "lucide-react";
-import { playerInitials } from "../lib/playerInitials.js";
+import { Bot, Crown } from "lucide-react";
+import { PlayerAvatar } from "./auth/PlayerAvatar.js";
 
 interface PlayerBadgeProps {
   player: PublicPlayerState;
@@ -47,14 +47,23 @@ export function PlayerBadge({ player, active = false, host = false, compact = fa
         compact && "px-2 py-1.5"
       )}
     >
-      <div className="player-avatar-token relative grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-teal-300 to-amber-200 text-sm font-black text-slate-950 shadow-sm">
-        {playerInitials(player.username)}
+      <div className="player-avatar-token relative shrink-0">
+        <PlayerAvatar
+          name={player.username}
+          avatarId={player.avatar}
+          photoUrl={player.avatarUrl}
+          frame={player.profileFrameId}
+          size="sm"
+          onlineState={player.connected ? "online" : "offline"}
+          isCurrentTurn={active}
+          isHost={host}
+          isGuest={player.accountType === "guest"}
+          isBot={player.isBot}
+          isDisconnected={!player.connected}
+          level={player.level}
+          rank={player.rankBadge}
+        />
         <span className="player-count-bubble">{player.handCount}</span>
-        {!player.connected ? (
-          <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-rose-500 text-white">
-            <WifiOff size={12} />
-          </span>
-        ) : null}
       </div>
       <div className="player-info-stack min-w-0 flex-1">
         <div className="flex items-center gap-1.5">

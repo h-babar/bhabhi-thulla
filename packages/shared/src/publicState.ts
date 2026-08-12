@@ -1,7 +1,14 @@
 import type { GameState, PublicGameState, PublicPlayerState, PublicSpectatorState } from "./types.js";
 
-export function toPublicGameState(state: GameState, viewerId?: string): PublicGameState {
+export function toPublicGameState(
+  state: GameState,
+  viewerId?: string,
+  areFriends: (ownerProfileId: string, viewerProfileId: string) => boolean = () => false
+): PublicGameState {
   const { deck, players, spectators, ...rest } = state;
+  const viewerProfileId =
+    players.find((player) => player.id === viewerId)?.profileId ??
+    spectators.find((spectator) => spectator.id === viewerId)?.profileId;
 
   const publicPlayers: PublicPlayerState[] = players.map((player) => {
     const {
@@ -12,8 +19,14 @@ export function toPublicGameState(state: GameState, viewerId?: string): PublicGa
       ...safePlayer
     } = player;
     const isYou = player.id === viewerId;
+    const canSeeImage = isYou || player.profileImageVisibility === "everyone" || (
+      player.profileImageVisibility === "friends" &&
+      Boolean(player.profileId && viewerProfileId && areFriends(player.profileId, viewerProfileId))
+    );
     return {
       ...safePlayer,
+      avatar: canSeeImage ? safePlayer.avatar : "initials",
+      avatarUrl: canSeeImage ? safePlayer.avatarUrl : undefined,
       handCount: hand.length,
       hand: isYou ? hand : undefined,
       isYou
@@ -21,10 +34,17 @@ export function toPublicGameState(state: GameState, viewerId?: string): PublicGa
   });
 
   const publicSpectators: PublicSpectatorState[] = spectators.map((spectator) => {
-    const { sessionId: _sessionId, ...safeSpectator } = spectator;
+    const { sessionId: _sessionId, profileId: _profileId, ...safeSpectator } = spectator;
+    const isYou = spectator.id === viewerId;
+    const canSeeImage = isYou || spectator.profileImageVisibility === "everyone" || (
+      spectator.profileImageVisibility === "friends" &&
+      Boolean(spectator.profileId && viewerProfileId && areFriends(spectator.profileId, viewerProfileId))
+    );
     return {
       ...safeSpectator,
-      isYou: spectator.id === viewerId
+      avatar: canSeeImage ? safeSpectator.avatar : "initials",
+      avatarUrl: canSeeImage ? safeSpectator.avatarUrl : undefined,
+      isYou
     };
   });
 

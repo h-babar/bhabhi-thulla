@@ -35,6 +35,11 @@ interface UserRow {
   display_name: string;
   username: string;
   photo_url: string | null;
+  google_photo_url: string | null;
+  custom_photo_url: string | null;
+  custom_photo_key: string | null;
+  active_image_type: PlayerProfile["activeImageType"];
+  profile_image_visibility: PlayerProfile["profileImageVisibility"];
   avatar_id: string;
   profile_frame_id: string;
   country: string | null;
@@ -61,9 +66,10 @@ export interface SocialProfileRecord {
   id: string;
   displayName: string;
   username: string;
-  photoUrl?: string;
+  avatarUrl?: string;
   avatarId: string;
   profileFrameId: string;
+  profileImageVisibility: PlayerProfile["profileImageVisibility"];
   level: number;
   rank: string;
   lastActiveAt: number;
@@ -160,9 +166,10 @@ export class GameDatabase {
 
     if (existing) {
       this.db.prepare(
-        `UPDATE users SET email = ?, photo_url = COALESCE(?, photo_url),
+        `UPDATE users SET email = ?, google_photo_url = COALESCE(?, google_photo_url),
+           photo_url = COALESCE(?, photo_url),
            last_active_at = ?, updated_at = ? WHERE id = ?`
-      ).run(input.email.toLowerCase(), input.photoUrl ?? null, now, now, existing.id);
+      ).run(input.email.toLowerCase(), input.photoUrl ?? null, input.photoUrl ?? null, now, now, existing.id);
       return this.getPlayerProfile(existing.id)!;
     }
 
@@ -172,9 +179,11 @@ export class GameDatabase {
     this.db.prepare(
       `INSERT INTO users (
         id, auth_provider, provider_user_id, email, display_name, username,
-        photo_url, avatar_id, profile_frame_id, level, xp, rank, coins,
+        photo_url, google_photo_url, avatar_id, profile_frame_id, active_image_type,
+        profile_image_visibility, level, xp, rank, coins,
         created_at, updated_at, last_active_at
-      ) VALUES (?, 'google', ?, ?, ?, ?, ?, 'Aero', 'classic', 1, 0, 'Rookie', 250, ?, ?, ?)`
+      ) VALUES (?, 'google', ?, ?, ?, ?, ?, ?, 'avatar_01', 'default', ?,
+        'everyone', 1, 0, 'Rookie', 250, ?, ?, ?)`
     ).run(
       id,
       input.providerUserId,
@@ -182,6 +191,8 @@ export class GameDatabase {
       displayName,
       username,
       input.photoUrl ?? null,
+      input.photoUrl ?? null,
+      input.photoUrl ? "google" : "avatar",
       now,
       now,
       now
@@ -205,7 +216,12 @@ export class GameDatabase {
       displayName: user.display_name,
       username: user.username,
       email: user.email,
-      photoUrl: user.photo_url ?? undefined,
+      photoUrl: resolveActiveImageUrl(user),
+      googlePhotoUrl: user.google_photo_url ?? undefined,
+      customPhotoUrl: user.custom_photo_url ?? undefined,
+      selectedAvatarId: user.avatar_id,
+      activeImageType: resolveActiveImageType(user),
+      profileImageVisibility: normalizeImageVisibility(user.profile_image_visibility),
       avatarId: user.avatar_id,
       profileFrameId: user.profile_frame_id,
       country: user.country ?? undefined,
@@ -250,12 +266,15 @@ export class GameDatabase {
       : current.selectedBadgeId;
     this.db.prepare(
       `UPDATE users SET display_name = ?, username = ?, avatar_id = ?, profile_frame_id = ?,
-       country = ?, bio = ?, selected_badge_id = ?, updated_at = ?, last_active_at = ? WHERE id = ?`
+       active_image_type = ?, profile_image_visibility = ?, country = ?, bio = ?,
+       selected_badge_id = ?, updated_at = ?, last_active_at = ? WHERE id = ?`
     ).run(
       input.displayName ?? current.displayName,
       input.username ?? current.username,
-      input.avatarId ?? current.avatarId,
+      input.selectedAvatarId ?? input.avatarId ?? current.avatarId,
       input.profileFrameId ?? current.profileFrameId,
+      input.activeImageType ?? current.activeImageType,
+      input.profileImageVisibility ?? current.profileImageVisibility,
       input.country ?? current.country ?? null,
       input.bio ?? current.bio ?? null,
       selectedBadgeId ?? null,
@@ -268,6 +287,38 @@ export class GameDatabase {
       const next = { ...current.preferences, ...input.preferences };
       this.writePreferences(userId, next);
     }
+    return this.getPlayerProfile(userId);
+  }
+
+  setCustomProfilePhoto(userId: string, photoUrl: string, storageKey: string): PlayerProfile | undefined {
+    const now = Date.now();
+    this.db.prepare(
+      `UPDATE users SET custom_photo_url = ?, custom_photo_key = ?, active_image_type = 'custom',
+       updated_at = ?, last_active_at = ? WHERE id = ?`
+    ).run(photoUrl.slice(0, 2048), storageKey.slice(0, 512), now, now, userId);
+    return this.getPlayerProfile(userId);
+  }
+
+  getCustomProfilePhotoKey(userId: string): string | undefined {
+    const row = this.db.prepare("SELECT custom_photo_key FROM users WHERE id = ?")
+      .get(userId) as { custom_photo_key: string | null } | undefined;
+    return row?.custom_photo_key ?? undefined;
+  }
+
+  clearCustomProfilePhoto(userId: string): PlayerProfile | undefined {
+    const current = this.getPlayerProfile(userId);
+    if (!current) return undefined;
+    const fallback = current.selectedAvatarId
+      ? "avatar"
+      : current.googlePhotoUrl
+        ? "google"
+        : "initials";
+    const now = Date.now();
+    this.db.prepare(
+      `UPDATE users SET custom_photo_url = NULL, custom_photo_key = NULL,
+       active_image_type = CASE WHEN active_image_type = 'custom' THEN ? ELSE active_image_type END,
+       updated_at = ?, last_active_at = ? WHERE id = ?`
+    ).run(fallback, now, now, userId);
     return this.getPlayerProfile(userId);
   }
 
@@ -330,7 +381,8 @@ export class GameDatabase {
 
   getSocialProfile(userId: string): SocialProfileRecord | undefined {
     const row = this.db.prepare(
-      `SELECT id, display_name, username, photo_url, avatar_id, profile_frame_id,
+      `SELECT id, display_name, username, photo_url, google_photo_url, custom_photo_url,
+              active_image_type, profile_image_visibility, avatar_id, profile_frame_id,
               level, rank, last_active_at FROM users WHERE id = ?`
     ).get(userId) as Record<string, unknown> | undefined;
     return row ? socialProfileFromRow(row) : undefined;
@@ -341,7 +393,8 @@ export class GameDatabase {
     if (normalized.length < 2) return [];
     const pattern = `%${normalized}%`;
     const rows = this.db.prepare(
-      `SELECT id, display_name, username, photo_url, avatar_id, profile_frame_id,
+      `SELECT id, display_name, username, photo_url, google_photo_url, custom_photo_url,
+              active_image_type, profile_image_visibility, avatar_id, profile_frame_id,
               level, rank, last_active_at
        FROM users
        WHERE id != ?
@@ -919,8 +972,13 @@ export class GameDatabase {
         display_name TEXT NOT NULL,
         username TEXT NOT NULL COLLATE NOCASE UNIQUE,
         photo_url TEXT,
-        avatar_id TEXT NOT NULL DEFAULT 'Aero',
-        profile_frame_id TEXT NOT NULL DEFAULT 'classic',
+        google_photo_url TEXT,
+        custom_photo_url TEXT,
+        custom_photo_key TEXT,
+        active_image_type TEXT NOT NULL DEFAULT 'google',
+        profile_image_visibility TEXT NOT NULL DEFAULT 'everyone',
+        avatar_id TEXT NOT NULL DEFAULT 'avatar_01',
+        profile_frame_id TEXT NOT NULL DEFAULT 'default',
         country TEXT,
         bio TEXT,
         level INTEGER NOT NULL DEFAULT 1,
@@ -1062,6 +1120,31 @@ export class GameDatabase {
     this.ensureColumn("player_preferences", "friend_online_notifications", "INTEGER NOT NULL DEFAULT 0");
     this.ensureColumn("player_preferences", "share_avatar_in_results", "INTEGER NOT NULL DEFAULT 1");
     this.ensureColumn("player_preferences", "share_username_in_results", "INTEGER NOT NULL DEFAULT 1");
+    this.ensureColumn("users", "google_photo_url", "TEXT");
+    this.ensureColumn("users", "custom_photo_url", "TEXT");
+    this.ensureColumn("users", "custom_photo_key", "TEXT");
+    this.ensureColumn("users", "active_image_type", "TEXT NOT NULL DEFAULT 'google'");
+    this.ensureColumn("users", "profile_image_visibility", "TEXT NOT NULL DEFAULT 'everyone'");
+    this.db.exec(`
+      UPDATE users SET google_photo_url = COALESCE(google_photo_url, photo_url)
+        WHERE google_photo_url IS NULL AND photo_url IS NOT NULL;
+      UPDATE users SET avatar_id = CASE avatar_id
+        WHEN 'Aero' THEN 'avatar_01'
+        WHEN 'Bolt' THEN 'avatar_02'
+        WHEN 'Crown' THEN 'avatar_03'
+        WHEN 'Drift' THEN 'avatar_04'
+        WHEN 'Flux' THEN 'avatar_05'
+        WHEN 'Glint' THEN 'avatar_06'
+        WHEN 'Halo' THEN 'avatar_07'
+        WHEN 'Ivy' THEN 'avatar_08'
+        ELSE avatar_id END;
+      UPDATE users SET profile_frame_id = CASE profile_frame_id
+        WHEN 'classic' THEN 'default'
+        WHEN 'emerald' THEN 'bronze'
+        WHEN 'royal' THEN 'gold'
+        WHEN 'champion' THEN 'tournament_champion'
+        ELSE profile_frame_id END;
+    `);
   }
 
   private ensureColumn(table: string, column: string, definition: string): void {
@@ -1128,17 +1211,41 @@ function preferencesFromRow(row: Record<string, unknown>): PlayerPreferences {
 }
 
 function socialProfileFromRow(row: Record<string, unknown>): SocialProfileRecord {
+  const imageRow = row as unknown as UserRow;
   return {
     id: String(row.id),
     displayName: String(row.display_name),
     username: String(row.username),
-    photoUrl: row.photo_url ? String(row.photo_url) : undefined,
+    avatarUrl: resolveActiveImageUrl(imageRow),
     avatarId: String(row.avatar_id),
     profileFrameId: String(row.profile_frame_id),
+    profileImageVisibility: normalizeImageVisibility(String(row.profile_image_visibility ?? "everyone")),
     level: Number(row.level),
     rank: String(row.rank),
     lastActiveAt: Number(row.last_active_at)
   };
+}
+
+function normalizeImageVisibility(value: unknown): PlayerProfile["profileImageVisibility"] {
+  return value === "friends" || value === "nobody" ? value : "everyone";
+}
+
+function resolveActiveImageType(row: Pick<UserRow, "active_image_type" | "custom_photo_url" | "google_photo_url" | "avatar_id">): PlayerProfile["activeImageType"] {
+  if (row.active_image_type === "custom" && row.custom_photo_url) return "custom";
+  if (row.active_image_type === "avatar" && row.avatar_id) return "avatar";
+  if (row.active_image_type === "google" && row.google_photo_url) return "google";
+  if (row.active_image_type === "initials") return "initials";
+  if (row.custom_photo_url) return "custom";
+  if (row.avatar_id) return "avatar";
+  if (row.google_photo_url) return "google";
+  return "initials";
+}
+
+function resolveActiveImageUrl(row: Pick<UserRow, "active_image_type" | "custom_photo_url" | "google_photo_url" | "avatar_id">): string | undefined {
+  const active = resolveActiveImageType(row);
+  if (active === "custom") return row.custom_photo_url ?? undefined;
+  if (active === "google") return row.google_photo_url ?? undefined;
+  return undefined;
 }
 
 function friendshipFromRow(row: Record<string, unknown>): FriendshipRecord {

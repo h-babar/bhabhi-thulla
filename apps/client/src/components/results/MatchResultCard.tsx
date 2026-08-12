@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { Check, Crown, Smile } from "lucide-react";
 import { getMatchResultCaption, type ShareableMatchResult } from "../../lib/matchResults.js";
-import { playerInitials } from "../../lib/playerInitials.js";
+import { PlayerAvatar } from "../auth/PlayerAvatar.js";
 
 export function MatchResultCard({ result }: { result: ShareableMatchResult }) {
   return (
@@ -34,7 +34,7 @@ export function MatchResultCard({ result }: { result: ShareableMatchResult }) {
               player.becameBhabhi && "is-bhabhi"
             )}
           >
-            <span className="match-result-avatar">{playerInitials(player.displayName)}</span>
+            <PlayerAvatar className="match-result-avatar" name={player.displayName} avatarId={player.avatarId} photoUrl={player.avatarUrl} frame={player.profileFrameId} size="md" />
             <span className="match-result-player-copy">
               <strong title={player.displayName}>{player.displayName}</strong>
               <small>

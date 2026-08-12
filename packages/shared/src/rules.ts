@@ -52,6 +52,10 @@ export function createPlayer(input: NewPlayerInput, now = Date.now()): PlayerSta
     sessionId: input.sessionId,
     username: sanitizeName(input.username),
     avatar: sanitizeAvatar(input.avatar),
+    avatarUrl: sanitizeAvatarUrl(input.avatarUrl),
+    profileFrameId: sanitizeAvatar(input.profileFrameId ?? "default"),
+    profileImageVisibility: input.profileImageVisibility ?? "everyone",
+    level: input.level && Number.isFinite(input.level) ? Math.max(1, Math.floor(input.level)) : undefined,
     hand: [],
     score: 0,
     roundWins: 0,
@@ -959,6 +963,12 @@ function sanitizeName(username: string): string {
 function sanitizeAvatar(avatar: string): string {
   const trimmed = avatar.trim().slice(0, 24);
   return trimmed.length > 0 ? trimmed : "Aero";
+}
+
+function sanitizeAvatarUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim().slice(0, 2048);
+  return /^(?:https:\/\/|\/uploads\/profile\/)/i.test(trimmed) ? trimmed : undefined;
 }
 
 function clampInteger(

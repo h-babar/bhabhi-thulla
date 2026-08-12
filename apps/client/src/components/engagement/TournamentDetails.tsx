@@ -30,6 +30,7 @@ import type { TournamentItem } from "../../data/engagementMock.js";
 import type { DailyCupEntry, OfflineCupProgress } from "../../store/engagementStore.js";
 import { CountdownTimer } from "./CountdownTimer.js";
 import { TournamentBracketPlaceholder } from "./TournamentBracketPlaceholder.js";
+import { PlayerAvatar } from "../auth/PlayerAvatar.js";
 
 type DetailTab = "overview" | "bracket" | "matches" | "players" | "rules";
 
@@ -239,7 +240,7 @@ function TournamentPlayers({ tournament }: { tournament: TournamentItem }) {
         {tournament.playerList.map((player) => (
           <article key={player.id} className={clsx("tournament-player-card", `is-${player.status}`)}>
             <span className="tournament-player-seed">#{player.seed}</span>
-            <span className="tournament-player-avatar">{player.avatar}</span>
+            <PlayerAvatar name={player.name} avatarId={player.avatar} size="sm" />
             <div><strong>{player.name}</strong><small>{player.status}</small></div>
             {player.status === "qualified" ? <CheckCircle2 size={17} /> : player.status === "playing" ? <Radio size={16} /> : null}
           </article>

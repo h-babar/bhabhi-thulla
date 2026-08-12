@@ -26,7 +26,10 @@ export function initializeFirebaseAdmin(): boolean {
     return true;
   }
 
-  initializeApp({ projectId: config.firebaseProjectId });
+  initializeApp({
+    projectId: config.firebaseProjectId,
+    storageBucket: config.firebaseStorageBucket
+  });
   firebaseReady = true;
   return true;
 }
@@ -73,6 +76,10 @@ export async function trustedPlayerPayload(
     return {
       username: profile.displayName,
       avatar: profile.avatarId,
+      avatarUrl: profile.photoUrl,
+      profileFrameId: profile.profileFrameId,
+      profileImageVisibility: profile.profileImageVisibility,
+      level: profile.level,
       sessionId: payload.sessionId,
       accountType: "registered",
       identityId: profile.id,
@@ -84,6 +91,8 @@ export async function trustedPlayerPayload(
   return {
     username: cleanPublicName(payload.username),
     avatar: cleanAvatar(payload.avatar),
+    profileFrameId: "default",
+    profileImageVisibility: "everyone",
     sessionId: payload.sessionId,
     guestId: payload.guestId,
     accountType: "guest",

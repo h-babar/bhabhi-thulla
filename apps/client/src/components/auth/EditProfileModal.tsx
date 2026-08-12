@@ -1,9 +1,11 @@
 import { NATION_OPTIONS, type UpdatePlayerProfileInput } from "@getaway-cards/shared";
-import { Check, LoaderCircle, XCircle } from "lucide-react";
+import { Check, Image, LoaderCircle, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../../store/authStore.js";
 import { Modal } from "../Modal.js";
-import { AvatarSelector } from "./AvatarSelector.js";
+import { PlayerAvatar } from "./PlayerAvatar.js";
+import { ProfileFrameSelector } from "./ProfileFrameSelector.js";
+import { ProfileImageEditor } from "./ProfileImageEditor.js";
 
 interface EditProfileModalProps {
   open: boolean;
@@ -18,6 +20,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
   const checkUsername = useAuthStore((state) => state.checkUsername);
   const [form, setForm] = useState<UpdatePlayerProfileInput>({});
   const [saving, setSaving] = useState(false);
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
   const [availability, setAvailability] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const current = profile ?? guest;
 
@@ -26,7 +29,7 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
     setForm({
       displayName: current.displayName,
       username: profile?.username,
-      avatarId: current.avatarId,
+      profileImageVisibility: profile?.profileImageVisibility,
       profileFrameId: profile?.profileFrameId,
       country: profile?.country,
       bio: profile?.bio
@@ -100,12 +103,11 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
                 </select>
               </label>
               <label>
-                <span>Profile frame</span>
-                <select className="field" value={form.profileFrameId ?? "classic"} onChange={(event) => setForm({ ...form, profileFrameId: event.target.value })}>
-                  <option value="classic">Classic</option>
-                  <option value="emerald">Emerald</option>
-                  <option value="royal">Royal</option>
-                  <option value="champion">Champion</option>
+                <span>Profile image visibility</span>
+                <select className="field" value={form.profileImageVisibility ?? "everyone"} onChange={(event) => setForm({ ...form, profileImageVisibility: event.target.value as "everyone" | "friends" | "nobody" })}>
+                  <option value="everyone">Everyone</option>
+                  <option value="friends">Friends only</option>
+                  <option value="nobody">Nobody</option>
                 </select>
               </label>
             </div>
@@ -115,15 +117,45 @@ export function EditProfileModal({ open, onClose }: EditProfileModalProps) {
             </label>
           </>
         ) : null}
+        <div className="profile-photo-field">
+          <span className="profile-field-label">Profile photo</span>
+          <div>
+            <PlayerAvatar
+              name={form.displayName ?? current.displayName}
+              avatarId={profile?.selectedAvatarId ?? current.avatarId}
+              photoUrl={profile?.photoUrl}
+              frame={form.profileFrameId ?? profile?.profileFrameId}
+              size="md"
+            />
+            <span><strong>{profile ? imageTypeLabel(profile.activeImageType) : "Game avatar"}</strong><small>Photo, avatar, Google image or initials</small></span>
+            <button type="button" aria-label="Change profile picture" onClick={() => setImageEditorOpen(true)}><Image size={16} /> Change</button>
+          </div>
+        </div>
         <div>
-          <span className="profile-field-label">Game avatar</span>
-          <AvatarSelector name={form.displayName ?? current.displayName} value={form.avatarId ?? current.avatarId} onChange={(avatarId) => setForm({ ...form, avatarId })} />
+          <span className="profile-field-label">Profile frame</span>
+          <ProfileFrameSelector
+            name={form.displayName ?? current.displayName}
+            value={form.profileFrameId ?? profile?.profileFrameId}
+            avatarId={profile?.selectedAvatarId ?? current.avatarId}
+            photoUrl={profile?.photoUrl}
+            level={profile?.level}
+            tournamentWins={profile?.stats.tournamentWins}
+            onChange={(profileFrameId) => setForm({ ...form, profileFrameId })}
+          />
         </div>
         <button className="primary-button justify-center" disabled={saving || availability === "taken" || availability === "checking"} onClick={save}>
           {saving ? <LoaderCircle className="animate-spin" size={18} /> : <Check size={18} />}
           Save profile
         </button>
       </div>
+      <ProfileImageEditor open={imageEditorOpen} onClose={() => setImageEditorOpen(false)} />
     </Modal>
   );
+}
+
+function imageTypeLabel(type: string): string {
+  if (type === "custom") return "Uploaded photo";
+  if (type === "google") return "Google photo";
+  if (type === "initials") return "Initials";
+  return "Game avatar";
 }

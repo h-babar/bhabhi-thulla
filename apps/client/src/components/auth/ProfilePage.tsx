@@ -51,10 +51,15 @@ export function ProfilePage() {
           <header className="profile-hero">
             <PlayerAvatar
               name={current.displayName}
-              avatarId={current.avatarId}
+              avatarId={profile?.selectedAvatarId ?? current.avatarId}
               photoUrl={profile?.photoUrl}
               frame={profile?.profileFrameId}
               size="lg"
+              onlineState="online"
+              level={level}
+              rank={profile?.rank}
+              showLevel={Boolean(profile)}
+              isGuest={!profile}
             />
             <div className="profile-hero-copy">
               <span className="profile-online"><i /> Online</span>

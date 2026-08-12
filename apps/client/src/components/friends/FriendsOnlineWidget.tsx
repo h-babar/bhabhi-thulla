@@ -14,7 +14,7 @@ export function FriendsOnlineWidget() {
   return (
     <section className="home-friends-widget">
       <header><span><UsersRound size={18} /></span><div><p>Friends online</p><h3>{snapshot.onlineCount} available now</h3></div><button onClick={() => openPanel("online")}>View all <ChevronRight size={15} /></button></header>
-      <div>{online.map((friend) => <article key={friend.id}><PlayerAvatar name={friend.displayName} avatarId={friend.avatarId} photoUrl={friend.photoUrl} size="sm" /><div><strong>{friend.displayName}</strong><small>{friend.presence.activity}</small></div><PresenceIndicator status={friend.presence.status} label={false} />{friend.presence.status === "online" ? <button onClick={() => invite(friend.id)} aria-label={`Invite ${friend.displayName}`}><Gamepad2 size={16} /></button> : null}</article>)}{online.length === 0 ? <p className="home-friends-empty">No friends online. Add recent players to build your crew.</p> : null}</div>
+      <div>{online.map((friend) => <article key={friend.id}><PlayerAvatar name={friend.displayName} avatarId={friend.selectedAvatarId ?? friend.avatarId} photoUrl={friend.avatarUrl ?? friend.photoUrl} frame={friend.profileFrameId} size="sm" onlineState={friend.presence.status === "online" ? "online" : "busy"} /><div><strong>{friend.displayName}</strong><small>{friend.presence.activity}</small></div><PresenceIndicator status={friend.presence.status} label={false} />{friend.presence.status === "online" ? <button onClick={() => invite(friend.id)} aria-label={`Invite ${friend.displayName}`}><Gamepad2 size={16} /></button> : null}</article>)}{online.length === 0 ? <p className="home-friends-empty">No friends online. Add recent players to build your crew.</p> : null}</div>
     </section>
   );
 }

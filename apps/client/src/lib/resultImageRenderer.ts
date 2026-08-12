@@ -1,3 +1,4 @@
+import { BUILT_IN_AVATARS } from "@getaway-cards/shared";
 import {
   formatMatchDuration,
   type ShareableMatchResult,
@@ -20,7 +21,9 @@ export async function renderMatchResultImage(result: ShareableMatchResult): Prom
   drawBrand(context, result.publicMatchId);
   drawHeading(context, result);
 
-  const avatarImages = await Promise.all(result.players.map((player) => loadAvatar(player.avatarUrl)));
+  const avatarImages = await Promise.all(result.players.map((player) => loadAvatar(
+    player.avatarUrl ?? (BUILT_IN_AVATARS.some((avatar) => avatar.id === player.avatarId) ? "/avatars/premium-avatar-sprite.png" : undefined)
+  )));
   drawPlayers(context, result.players, avatarImages);
   drawStats(context, result);
   drawFooter(context);
@@ -222,7 +225,24 @@ function drawAvatar(
   context.arc(x, y, radius, 0, Math.PI * 2);
   context.clip();
   if (image) {
-    context.drawImage(image, x - radius, y - radius, radius * 2, radius * 2);
+    const builtIn = !player.avatarUrl ? BUILT_IN_AVATARS.find((avatar) => avatar.id === player.avatarId) : undefined;
+    if (builtIn) {
+      const cellWidth = image.naturalWidth / 4;
+      const cellHeight = image.naturalHeight / 4;
+      context.drawImage(
+        image,
+        (builtIn.spriteIndex % 4) * cellWidth,
+        Math.floor(builtIn.spriteIndex / 4) * cellHeight,
+        cellWidth,
+        cellHeight,
+        x - radius,
+        y - radius,
+        radius * 2,
+        radius * 2
+      );
+    } else {
+      context.drawImage(image, x - radius, y - radius, radius * 2, radius * 2);
+    }
   } else {
     const avatar = context.createLinearGradient(x - radius, y - radius, x + radius, y + radius);
     avatar.addColorStop(0, bhabhi ? "#ff7891" : "#43dfaa");

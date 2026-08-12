@@ -31,6 +31,8 @@ export interface SocialPlayerProfile {
   displayName: string;
   username: string;
   avatarId: string;
+  selectedAvatarId?: string;
+  avatarUrl?: string;
   photoUrl?: string;
   profileFrameId: string;
   rank: string;

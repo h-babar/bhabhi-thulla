@@ -21,7 +21,7 @@ export function GameInviteNotification() {
   return <><AnimatePresence>{notification?.invite ? (
     <motion.aside className="game-invite-toast" initial={{ opacity: 0, y: 24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16 }}>
       <button className="game-invite-close" onClick={() => dismiss(notification.id)} aria-label="Dismiss invitation"><X size={15} /></button>
-      <PlayerAvatar name={notification.invite.sender.displayName} avatarId={notification.invite.sender.avatarId} photoUrl={notification.invite.sender.photoUrl} size="md" />
+      <PlayerAvatar name={notification.invite.sender.displayName} avatarId={notification.invite.sender.selectedAvatarId ?? notification.invite.sender.avatarId} photoUrl={notification.invite.sender.avatarUrl ?? notification.invite.sender.photoUrl} frame={notification.invite.sender.profileFrameId} size="md" onlineState="online" />
       <div><small>Game invitation</small><strong>{notification.invite.sender.displayName}</strong><p>invited you to play Bhabhi Thulla</p></div>
       <button className="is-join" onClick={() => acceptInvite(notification.invite!.id)}><Gamepad2 size={16} /> Join</button>
       <button onClick={() => declineInvite(notification.invite!.id)}>Decline</button>

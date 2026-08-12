@@ -1,4 +1,5 @@
 export * from "./bots.js";
+export * from "./avatar.js";
 export * from "./constants.js";
 export * from "./deck.js";
 export * from "./publicState.js";

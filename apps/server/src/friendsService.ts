@@ -197,6 +197,10 @@ export class FriendsService {
         roomJoin = this.roomManager.createRoom({
           username: sender.displayName,
           avatar: sender.avatarId,
+          avatarUrl: sender.photoUrl,
+          profileFrameId: sender.profileFrameId,
+          profileImageVisibility: sender.profileImageVisibility,
+          level: sender.level,
           identityId: sender.id,
           profileId: sender.id,
           accountType: "registered",
@@ -330,16 +334,22 @@ export class FriendsService {
   }
 
   private toSocialProfile(profile: SocialProfileRecord, viewerId: string): SocialPlayerProfile {
+    const relationship = this.db.getRelationship(viewerId, profile.id);
+    const canSeeImage = viewerId === profile.id || profile.profileImageVisibility === "everyone" || (
+      profile.profileImageVisibility === "friends" && relationship === "friends"
+    );
     return {
       id: profile.id,
       displayName: profile.displayName,
       username: profile.username,
-      avatarId: profile.avatarId,
-      photoUrl: profile.photoUrl,
+      avatarId: canSeeImage ? profile.avatarId : "initials",
+      selectedAvatarId: canSeeImage ? profile.avatarId : undefined,
+      avatarUrl: canSeeImage ? profile.avatarUrl : undefined,
+      photoUrl: canSeeImage ? profile.avatarUrl : undefined,
       profileFrameId: profile.profileFrameId,
       rank: profile.rank,
       level: profile.level,
-      relationship: this.db.getRelationship(viewerId, profile.id),
+      relationship,
       presence: this.presenceFor(profile.id, viewerId)
     };
   }

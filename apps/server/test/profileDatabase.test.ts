@@ -60,6 +60,36 @@ test("share-card privacy preferences persist with safe defaults", () => {
   });
 });
 
+test("profile image sources remain independent and custom removal preserves Google photo", () => {
+  withDatabase((database) => {
+    const profile = database.getOrCreateGoogleProfile({
+      providerUserId: "google-avatar-sources",
+      email: "avatar@example.com",
+      displayName: "Avatar Player",
+      photoUrl: "https://images.example.com/google-photo.jpg"
+    });
+
+    const avatar = database.updatePlayerProfile(profile.id, {
+      selectedAvatarId: "avatar_06",
+      activeImageType: "avatar",
+      profileFrameId: "gold",
+      profileImageVisibility: "friends"
+    });
+    assert.equal(avatar.googlePhotoUrl, "https://images.example.com/google-photo.jpg");
+    assert.equal(avatar.selectedAvatarId, "avatar_06");
+    assert.equal(avatar.photoUrl, undefined);
+    assert.equal(avatar.profileImageVisibility, "friends");
+
+    const custom = database.setCustomProfilePhoto(profile.id, "https://cdn.example.com/custom.webp", "avatars/player/custom.webp");
+    assert.equal(custom.activeImageType, "custom");
+    assert.equal(custom.photoUrl, "https://cdn.example.com/custom.webp");
+    const cleared = database.clearCustomProfilePhoto(profile.id);
+    assert.equal(cleared.customPhotoUrl, undefined);
+    assert.equal(cleared.activeImageType, "avatar");
+    assert.equal(cleared.googlePhotoUrl, "https://images.example.com/google-photo.jpg");
+  });
+});
+
 test("friend requests are canonical, reciprocal, and duplicate-safe", () => {
   withDatabase((database) => {
     const alice = database.getOrCreateGoogleProfile({ providerUserId: "friend-a", email: "a@example.com", displayName: "Alice Ace" });
@@ -206,4 +236,55 @@ test("completed match statistics are recorded exactly once", () => {
     assert.equal("profileId" in publicWinner, false);
     assert.equal("email" in publicWinner, false);
   });
+});
+
+test("public game avatars respect everyone, friends, nobody, and self visibility", () => {
+  const owner = createPlayer({
+    id: "owner-seat",
+    username: "Private Photo",
+    avatar: "avatar_03",
+    avatarUrl: "https://images.example.com/private.webp",
+    profileFrameId: "gold",
+    profileImageVisibility: "nobody",
+    accountType: "registered",
+    profileId: "profile-owner"
+  }, 100);
+  const viewer = createPlayer({
+    id: "viewer-seat",
+    username: "Viewer",
+    avatar: "avatar_02",
+    profileImageVisibility: "everyone",
+    accountType: "registered",
+    profileId: "profile-viewer"
+  }, 100);
+  const state = createGameState("PRIVACY", owner, undefined, 100);
+  state.players.push(viewer);
+
+  const strangerView = toPublicGameState(state, viewer.id, () => false).players[0]!;
+  const selfView = toPublicGameState(state, owner.id, () => false).players[0]!;
+  assert.equal(strangerView.avatarUrl, undefined);
+  assert.equal(strangerView.avatar, "initials");
+  assert.equal(selfView.avatarUrl, "https://images.example.com/private.webp");
+  assert.equal(selfView.avatar, "avatar_03");
+
+  owner.profileImageVisibility = "friends";
+  state.spectators.push({
+    id: "spectator-seat",
+    sessionId: "spectator-session",
+    profileId: "profile-spectator",
+    username: "Friend Spectator",
+    avatar: "avatar_04",
+    profileImageVisibility: "everyone",
+    connected: true,
+    joinedAt: 100,
+    lastSeenAt: 100
+  });
+  const friendSpectatorView = toPublicGameState(
+    state,
+    "spectator-seat",
+    (ownerProfileId, viewerProfileId) =>
+      ownerProfileId === "profile-owner" && viewerProfileId === "profile-spectator"
+  );
+  assert.equal(friendSpectatorView.players[0]?.avatarUrl, "https://images.example.com/private.webp");
+  assert.equal("profileId" in friendSpectatorView.spectators[0]!, false);
 });

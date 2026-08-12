@@ -78,7 +78,9 @@ export interface ReservedProfileRoom {
 
 type RoomChangedHandler = (roomCode: string) => void | Promise<void>;
 type RoomClosedHandler = (payload: RoomClosedPayload) => void | Promise<void>;
-type RoomDatabase = Pick<GameDatabase, "recordSnapshot" | "deleteRoomSnapshot">;
+type RoomDatabase = Pick<GameDatabase, "recordSnapshot" | "deleteRoomSnapshot"> & {
+  getRelationship?: GameDatabase["getRelationship"];
+};
 
 export interface RoomLifecycleOptions {
   matchResultsMs?: number;
@@ -154,6 +156,10 @@ export class RoomManager {
       sessionId,
       username: payload.username,
       avatar: payload.avatar,
+      avatarUrl: payload.avatarUrl,
+      profileFrameId: payload.profileFrameId,
+      profileImageVisibility: payload.profileImageVisibility,
+      level: payload.level,
       accountType: payload.accountType,
       profileId: payload.profileId,
       rankBadge: payload.rankBadge
@@ -174,6 +180,14 @@ export class RoomManager {
     const response = this.createRoom({
       username: payload.username,
       avatar: payload.avatar,
+      avatarUrl: payload.avatarUrl,
+      profileFrameId: payload.profileFrameId,
+      profileImageVisibility: payload.profileImageVisibility,
+      level: payload.level,
+      accountType: payload.accountType,
+      profileId: payload.profileId,
+      identityId: payload.identityId,
+      rankBadge: payload.rankBadge,
       sessionId: payload.sessionId,
       settings: {
         ...payload.settings,
@@ -204,6 +218,14 @@ export class RoomManager {
     const response = this.createRoom({
       username: payload.username,
       avatar: payload.avatar,
+      avatarUrl: payload.avatarUrl,
+      profileFrameId: payload.profileFrameId,
+      profileImageVisibility: payload.profileImageVisibility,
+      level: payload.level,
+      accountType: payload.accountType,
+      profileId: payload.profileId,
+      identityId: payload.identityId,
+      rankBadge: payload.rankBadge,
       sessionId: payload.sessionId,
       settings: {
         ...payload.settings,
@@ -238,6 +260,10 @@ export class RoomManager {
       sessionId,
       username: payload.username,
       avatar: payload.avatar,
+      avatarUrl: payload.avatarUrl,
+      profileFrameId: payload.profileFrameId,
+      profileImageVisibility: payload.profileImageVisibility,
+      level: payload.level,
       accountType: payload.accountType,
       profileId: payload.profileId,
       rankBadge: payload.rankBadge
@@ -304,6 +330,10 @@ export class RoomManager {
       existingPlayer.lastSeenAt = now;
       existingPlayer.username = payload.username.trim().slice(0, 24) || existingPlayer.username;
       existingPlayer.avatar = payload.avatar.trim().slice(0, 24) || existingPlayer.avatar;
+      existingPlayer.avatarUrl = payload.avatarUrl ?? existingPlayer.avatarUrl;
+      existingPlayer.profileFrameId = payload.profileFrameId ?? existingPlayer.profileFrameId;
+      existingPlayer.profileImageVisibility = payload.profileImageVisibility ?? existingPlayer.profileImageVisibility;
+      existingPlayer.level = payload.level ?? existingPlayer.level;
       existingPlayer.rankBadge = payload.rankBadge ?? existingPlayer.rankBadge;
       room.state.updatedAt = now;
       this.commitExisting(roomCode);
@@ -346,8 +376,13 @@ export class RoomManager {
       const spectator = {
         id: randomUUID(),
         sessionId,
+        profileId: payload.profileId,
         username: payload.username.trim().slice(0, 18) || "Spectator",
         avatar: payload.avatar.trim().slice(0, 24) || "Aero",
+        avatarUrl: payload.avatarUrl,
+        profileFrameId: payload.profileFrameId,
+        profileImageVisibility: payload.profileImageVisibility ?? "everyone",
+        level: payload.level,
         connected: true,
         joinedAt: now,
         lastSeenAt: now
@@ -363,6 +398,10 @@ export class RoomManager {
       sessionId,
       username: payload.username,
       avatar: payload.avatar,
+      avatarUrl: payload.avatarUrl,
+      profileFrameId: payload.profileFrameId,
+      profileImageVisibility: payload.profileImageVisibility,
+      level: payload.level,
       accountType: payload.accountType,
       profileId: payload.profileId,
       rankBadge: payload.rankBadge
@@ -456,7 +495,13 @@ export class RoomManager {
 
   getPublicState(roomCode: string, viewerId?: string): PublicGameState | undefined {
     const room = this.rooms.get(normalizeRoomCode(roomCode));
-    return room ? toPublicGameState(room.state, viewerId) : undefined;
+    return room
+      ? toPublicGameState(
+          room.state,
+          viewerId,
+          (ownerId, viewerProfileId) => this.db.getRelationship?.(viewerProfileId, ownerId) === "friends"
+        )
+      : undefined;
   }
 
   findActiveGame(profileId: string): ActiveGameSummary | undefined {
@@ -867,8 +912,13 @@ export class RoomManager {
         id: randomUUID(),
         sessionId: spectatorSessionId,
         replacedPlayerId: player.id,
+        profileId: player.profileId,
         username: originalName,
         avatar: originalAvatar,
+        avatarUrl: player.avatarUrl,
+        profileFrameId: player.profileFrameId,
+        profileImageVisibility: player.profileImageVisibility,
+        level: player.level,
         connected: true,
         joinedAt: now,
         lastSeenAt: now

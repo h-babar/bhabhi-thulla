@@ -5,6 +5,7 @@ export interface ShareableMatchResultPlayer {
   displayName: string;
   avatarId?: string;
   avatarUrl?: string;
+  profileFrameId?: string;
   finalPosition: number;
   escaped: boolean;
   becameBhabhi: boolean;
@@ -75,8 +76,8 @@ export function buildShareableMatchResult(
       const avatarUrl = isCurrentPlayer
         ? options.includeCurrentAvatar === false
           ? undefined
-          : options.currentAvatarUrl ?? safeAvatarUrl(publicPlayer?.avatar)
-        : safeAvatarUrl(publicPlayer?.avatar);
+          : options.currentAvatarUrl ?? safeAvatarUrl(publicPlayer?.avatarUrl)
+        : safeAvatarUrl(publicPlayer?.avatarUrl);
 
       return {
         playerId: publicPlayerKey(line.playerId, summary.id),
@@ -87,6 +88,7 @@ export function buildShareableMatchResult(
         ),
         avatarId: publicPlayer?.avatar,
         avatarUrl,
+        profileFrameId: publicPlayer?.profileFrameId,
         finalPosition: position,
         escaped: line.escaped && !becameBhabhi,
         becameBhabhi,

@@ -16,7 +16,7 @@ export function FriendRow({ friend }: { friend: SocialPlayerProfile }) {
   return (
     <article className="friend-row">
       <div className="friend-avatar-wrap">
-        <PlayerAvatar name={friend.displayName} avatarId={friend.avatarId} photoUrl={friend.photoUrl} frame={friend.profileFrameId} size="md" />
+        <PlayerAvatar name={friend.displayName} avatarId={friend.selectedAvatarId ?? friend.avatarId} photoUrl={friend.avatarUrl ?? friend.photoUrl} frame={friend.profileFrameId} size="md" onlineState={friend.presence.status === "in_match" || friend.presence.status === "in_tournament" ? "busy" : friend.presence.status === "online" ? "online" : "offline"} level={friend.level} rank={friend.rank} />
         <PresenceIndicator status={friend.presence.status} label={false} />
       </div>
       <div className="friend-row-copy">

@@ -113,7 +113,7 @@ function FriendRequestList() {
       {snapshot.gameInvites.length > 0 ? (
         <section><h3>Game invitations</h3>{snapshot.gameInvites.map((invite) => (
           <article className="friend-request-card is-invite" key={invite.id}>
-            <PlayerAvatar name={invite.sender.displayName} avatarId={invite.sender.avatarId} photoUrl={invite.sender.photoUrl} size="md" />
+            <PlayerAvatar name={invite.sender.displayName} avatarId={invite.sender.selectedAvatarId ?? invite.sender.avatarId} photoUrl={invite.sender.avatarUrl ?? invite.sender.photoUrl} frame={invite.sender.profileFrameId} size="md" />
             <div><strong>{invite.sender.displayName}</strong><span>Invited you to a private table</span><small><Clock3 size={13} /> Expires shortly</small></div>
             <div><button className="is-accept" onClick={() => acceptInvite(invite.id)}><Gamepad2 size={15} /> Join</button><button onClick={() => declineInvite(invite.id)}>Decline</button></div>
           </article>
@@ -130,7 +130,7 @@ function RequestSection({ title, requests, onPrimary, onSecondary }: { title: st
   if (!requests.length) return null;
   return <section><h3>{title}</h3>{requests.map((request) => (
     <article className="friend-request-card" key={request.id}>
-      <PlayerAvatar name={request.profile.displayName} avatarId={request.profile.avatarId} photoUrl={request.profile.photoUrl} size="md" />
+      <PlayerAvatar name={request.profile.displayName} avatarId={request.profile.selectedAvatarId ?? request.profile.avatarId} photoUrl={request.profile.avatarUrl ?? request.profile.photoUrl} frame={request.profile.profileFrameId} size="md" />
       <div><strong>{request.profile.displayName}</strong><span>@{request.profile.username}</span><small>{request.profile.rank} - Level {request.profile.level}</small></div>
       <div>{onPrimary ? <button className="is-accept" onClick={() => onPrimary(request.id)}>Accept</button> : <em>Pending</em>}<button onClick={() => onSecondary(request.id)}>{onPrimary ? "Decline" : "Cancel"}</button></div>
     </article>
@@ -161,7 +161,7 @@ function SearchResult({ profile, meta }: { profile: SocialPlayerProfile; meta?: 
   const request = useFriendsStore((state) => state.snapshot.incomingRequests.find((item) => item.profile.id === profile.id));
   return (
     <article className="friend-search-row">
-      <PlayerAvatar name={profile.displayName} avatarId={profile.avatarId} photoUrl={profile.photoUrl} size="md" />
+      <PlayerAvatar name={profile.displayName} avatarId={profile.selectedAvatarId ?? profile.avatarId} photoUrl={profile.avatarUrl ?? profile.photoUrl} frame={profile.profileFrameId} size="md" onlineState={profile.presence.status === "in_match" || profile.presence.status === "in_tournament" ? "busy" : profile.presence.status === "online" ? "online" : "offline"} />
       <div><strong>{profile.displayName}</strong><span>@{profile.username}</span><small>{meta ?? `${profile.rank} - Level ${profile.level}`}</small></div>
       <PresenceIndicator status={profile.presence.status} label={false} />
       {profile.relationship === "none" ? <button onClick={() => sendRequest(profile.id)}><UserPlus size={16} /> Add Friend</button> : null}

@@ -13,7 +13,7 @@ import type {
   VoiceConnectionState,
   VoiceParticipantState
 } from "./types.js";
-import type { AccountType } from "./profile.js";
+import type { AccountType, ProfileImageVisibility } from "./profile.js";
 import type {
   FriendActionResponse,
   FriendInviteActionPayload,
@@ -32,6 +32,10 @@ import type {
 export interface PlayerProfilePayload {
   username: string;
   avatar: string;
+  avatarUrl?: string;
+  profileFrameId?: string;
+  profileImageVisibility?: ProfileImageVisibility;
+  level?: number;
   sessionId?: string;
   guestId?: string;
   accountType?: Exclude<AccountType, "bot">;

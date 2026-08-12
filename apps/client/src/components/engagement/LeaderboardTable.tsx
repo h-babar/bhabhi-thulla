@@ -1,5 +1,6 @@
 import { Medal } from "lucide-react";
 import type { LeaderboardEntry } from "../../data/engagementMock.js";
+import { PlayerAvatar } from "../auth/PlayerAvatar.js";
 
 export function LeaderboardTable({
   title,
@@ -40,9 +41,7 @@ export function LeaderboardTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-teal-300 to-amber-200 text-xs font-black text-slate-950">
-                      {entry.avatar}
-                    </span>
+                    <PlayerAvatar name={entry.playerName} avatarId={entry.avatar} size="sm" />
                     <span className="font-black">{entry.playerName}</span>
                   </div>
                 </td>
