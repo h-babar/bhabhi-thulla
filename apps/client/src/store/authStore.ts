@@ -66,6 +66,7 @@ interface AuthStore {
 
 let authListenerInstalled = false;
 let handlingUserId: string | undefined;
+let authFlowVersion = 0;
 const pendingMergeKey = "bhabhi-thulla-pending-guest-merge";
 
 export const useAuthStore = create<AuthStore>()(
@@ -79,6 +80,8 @@ export const useAuthStore = create<AuthStore>()(
           set({ status: get().guest ? "guest" : "choice" });
           return;
         }
+        const savedProfile = get().profile;
+        set({ status: savedProfile ? "registered" : get().guest ? "guest" : "choice" });
         const auth = await getFirebaseAuth();
         if (!auth) {
           set({ status: get().guest ? "guest" : "choice" });
@@ -124,9 +127,17 @@ export const useAuthStore = create<AuthStore>()(
               achievements: [],
               createdAt: Date.now()
             };
+        authFlowVersion += 1;
+        handlingUserId = undefined;
         set({ guest, status: "guest", error: undefined });
+        void getFirebaseAuth()
+          .then(async (auth) => {
+            if (auth?.currentUser) await signOut(auth);
+          })
+          .catch(() => undefined);
       },
       signInWithGoogle: async (mergeGuest = false) => {
+        authFlowVersion += 1;
         const auth = await getFirebaseAuth();
         if (!auth) {
           set({ error: "Google sign-in is not configured yet. Add the Firebase environment values first." });
@@ -198,11 +209,13 @@ export const useAuthStore = create<AuthStore>()(
         return checkUsername(token, username);
       },
       logout: async () => {
+        authFlowVersion += 1;
         const auth = await getFirebaseAuth();
         if (auth) await signOut(auth);
         set({ status: "choice", profile: undefined, idToken: undefined, guest: undefined, profileOpen: false });
       },
       changePlayer: async () => {
+        authFlowVersion += 1;
         const auth = await getFirebaseAuth();
         if (auth?.currentUser) await signOut(auth);
         set({ status: "choice", profile: undefined, idToken: undefined, guest: undefined, profileOpen: false });
@@ -232,10 +245,17 @@ async function hydrateGoogleUser(
     return;
   }
   if (handlingUserId === user.uid && get().status === "authenticating") return;
+  const flowVersion = authFlowVersion;
+  const cachedProfile = get().profile?.providerUserId === user.uid ? get().profile : undefined;
   handlingUserId = user.uid;
-  set({ status: "authenticating", error: undefined });
+  if (!cachedProfile) set({ status: "authenticating", error: undefined });
+  let token: string | undefined;
   try {
-    const token = await user.getIdToken();
+    token = await user.getIdToken();
+    if (flowVersion !== authFlowVersion || get().status === "guest") return;
+    if (cachedProfile) {
+      set({ status: "registered", profile: cachedProfile, idToken: token, error: undefined });
+    }
     const response = await exchangeGoogleToken(token);
     if (!response.profile) throw new Error(response.error ?? "Could not load your player profile.");
     let profile = response.profile;
@@ -245,9 +265,15 @@ async function hydrateGoogleUser(
       if (merged.profile) profile = merged.profile;
       sessionStorage.removeItem(pendingMergeKey);
     }
+    if (flowVersion !== authFlowVersion || get().status === "guest") return;
     set({ status: "registered", profile, idToken: token, guest: shouldMerge ? undefined : get().guest, upgradeOpen: false });
   } catch (error) {
     handlingUserId = undefined;
+    if (flowVersion !== authFlowVersion || get().status === "guest") return;
+    if (cachedProfile) {
+      set({ status: "registered", profile: cachedProfile, idToken: token, error: undefined });
+      return;
+    }
     set({ status: get().guest ? "guest" : "error", error: authErrorMessage(error) });
   }
 }

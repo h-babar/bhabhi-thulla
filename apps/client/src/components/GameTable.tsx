@@ -21,6 +21,7 @@ import {
   Ellipsis,
   Hand,
   Home,
+  Import,
   LogOut,
   MessageCircle,
   Play,
@@ -898,7 +899,9 @@ function SeatIdentity({
     : active
       ? player.isBot
         ? "Thinking..."
-        : "Your turn"
+        : player.isYou
+          ? "Your turn"
+          : "Playing now"
       : "Waiting";
 
   return (
@@ -1306,14 +1309,19 @@ function TrickTable({
           ? "Dhulla Result"
           : "Trick Result"
         : "Table Ready";
+  const isViewerTurn = state.activePlayerId === playerId;
   const resultText = showingResult && state.lastTrick
     ? state.lastTrick.hasThulla
       ? `${state.lastTrick.pickedUpByName ?? state.lastTrick.winnerName} picks up ${state.lastTrick.cardCount} cards`
       : `${state.lastTrick.winnerName} clears ${state.lastTrick.cardCount} cards`
     : state.openingLeadRequired
-      ? `${activePlayerName ?? "Ace holder"} must play ${aceSpades}`
+      ? isViewerTurn
+        ? `Your turn - play ${aceSpades}`
+        : `${activePlayerName ?? "Ace holder"} must play ${aceSpades}`
     : activePlayerName
-      ? `${activePlayerName} to play`
+      ? isViewerTurn
+        ? "Your turn - play a card"
+        : `${activePlayerName}'s turn`
       : "Ace of Spades starts the hand";
   const cleaningActive = showingResult && cleaningTrickId === state.lastTrick?.id;
   const orderedPlayerIds = useMemo(() => {
@@ -1416,7 +1424,8 @@ function TrickTable({
         <p
           className={clsx(
             "center-result-pill relative z-10 mt-1 text-sm font-black text-white",
-            !showingResult && "center-result-pill-live"
+            !showingResult && "center-result-pill-live",
+            !showingResult && isViewerTurn && "center-result-pill-your-turn"
           )}
         >
           {resultText}
@@ -1564,6 +1573,7 @@ function TurnTimerBadge({
   state: PublicGameState;
   activePlayerName?: string;
 }) {
+  const isViewerTurn = state.players.some((player) => player.id === state.activePlayerId && player.isYou);
   const [now, setNow] = useState(Date.now());
   const timer = useMemo(() => {
     if (state.dealEndsAt && now < state.dealEndsAt) {
@@ -1623,7 +1633,10 @@ function TurnTimerBadge({
   }, []);
 
   return (
-    <div className="turn-timer-badge relative z-10 mx-auto mb-3 flex w-fit max-w-full items-center gap-3 rounded-full border border-white/15 bg-slate-950/45 px-3 py-2 text-white shadow-card backdrop-blur">
+    <div className={clsx(
+      "turn-timer-badge relative z-10 mx-auto mb-3 flex w-fit max-w-full items-center gap-3 rounded-full border border-white/15 bg-slate-950/45 px-3 py-2 text-white shadow-card backdrop-blur",
+      isViewerTurn && timer.phase === "turn" && "turn-timer-badge-mine"
+    )}>
       <div
         className="timer-ring grid h-12 w-12 shrink-0 place-items-center rounded-full p-1"
         style={{
@@ -1637,7 +1650,7 @@ function TurnTimerBadge({
       </div>
       <div className="min-w-0 text-left">
         <p className="text-[0.62rem] font-black uppercase tracking-[0.2em] text-teal-100">
-          Current Turn
+          {isViewerTurn && timer.phase === "turn" ? "Your Turn" : "Current Turn"}
         </p>
         <p className="truncate text-sm font-black">
           {timer.phase === "deal"
@@ -1648,8 +1661,10 @@ function TurnTimerBadge({
             ? `Celebrating ${state.winCelebration.username}`
             : state.openingLeadRequired
             ? "A\u2660 starts the hand"
+            : isViewerTurn
+              ? "Play a card now"
             : activePlayerName
-              ? `${activePlayerName} to play`
+              ? `${activePlayerName}'s turn`
               : "Between hands"}
         </p>
       </div>
@@ -1705,7 +1720,7 @@ function TurnControls({
           onClick={onTake}
           title={"Take all " + takeTarget.cardCount + " cards from " + takeTarget.name}
         >
-          <Hand size={16} />
+          <span className="take-card-icon" aria-hidden="true"><Import size={16} /></span>
           <span className="take-action-full">Take {takeTarget.name}'s {takeTarget.cardCount}</span>
           <span className="take-action-compact">Take {takeTarget.cardCount}</span>
         </button>

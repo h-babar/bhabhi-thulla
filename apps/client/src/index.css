@@ -4786,7 +4786,7 @@ body:has(.game-table-main),
 .image-cropper-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .55rem; }
 
 .profile-photo-field > div { display: flex; align-items: center; gap: .8rem; margin-top: .5rem; padding: .75rem; border: 1px solid rgba(255,255,255,.1); border-radius: .5rem; background: rgba(255,255,255,.04); }
-.profile-photo-field > div > span { display: grid; flex: 1; }
+.profile-photo-field > div > span:not(.player-avatar-shell) { display: grid; flex: 1; min-width: 0; }
 .profile-photo-field small { color: var(--muted-text, #9badA7); }
 .profile-photo-field button { display: inline-flex; min-height: 2.45rem; align-items: center; gap: .35rem; padding: 0 .75rem; border: 1px solid rgba(62,218,164,.3); border-radius: .4rem; background: rgba(62,218,164,.09); color: #79e8c2; font-weight: 850; }
 .profile-frame-selector { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-top: .5rem; }
@@ -16127,4 +16127,139 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     padding-top: 0.5rem;
     font-size: 1.55rem !important;
   }
+}
+
+/* Identity, turn focus, and table-action finishing pass. */
+.profile-photo-field > div > .player-avatar-shell {
+  display: inline-grid !important;
+  width: var(--avatar-size) !important;
+  min-width: var(--avatar-size) !important;
+  max-width: var(--avatar-size) !important;
+  height: var(--avatar-size) !important;
+  flex: 0 0 var(--avatar-size) !important;
+  place-items: center !important;
+  aspect-ratio: 1 !important;
+  border-radius: 50% !important;
+}
+
+.take-card-action {
+  isolation: isolate;
+  border-color: rgba(245, 197, 86, 0.4) !important;
+  background: linear-gradient(145deg, rgba(94, 70, 18, 0.88), rgba(22, 28, 24, 0.96)) !important;
+  color: #fff4c7 !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 0.65rem 1.4rem rgba(0, 0, 0, 0.22) !important;
+}
+
+.take-card-action:hover {
+  border-color: rgba(250, 204, 82, 0.68) !important;
+  background: linear-gradient(145deg, rgba(124, 91, 20, 0.94), rgba(24, 37, 30, 0.98)) !important;
+}
+
+.take-card-action > .take-card-icon {
+  display: inline-grid !important;
+  width: 1.72rem !important;
+  min-width: 1.72rem !important;
+  height: 1.72rem !important;
+  flex: 0 0 1.72rem !important;
+  place-items: center !important;
+  border: 1px solid rgba(255, 231, 156, 0.24) !important;
+  border-radius: 0.52rem !important;
+  background: rgba(248, 190, 50, 0.13) !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.take-card-action > .take-action-full,
+.take-card-action > .take-action-compact {
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
+  box-shadow: none !important;
+}
+
+.play-table-shell .seat-identity-active .seat-nameplate {
+  border-color: rgba(134, 239, 172, 0.68) !important;
+  background: linear-gradient(145deg, rgba(4, 45, 31, 0.97), rgba(3, 16, 13, 0.94)) !important;
+  box-shadow:
+    0 0 0 0.14rem rgba(74, 222, 128, 0.13),
+    0 0 1.35rem rgba(74, 222, 128, 0.34),
+    0 0.8rem 1.6rem rgba(0, 0, 0, 0.42) !important;
+}
+
+.play-table-shell .seat-identity-active .seat-player-status {
+  color: #86efac !important;
+  text-shadow: 0 0 0.75rem rgba(74, 222, 128, 0.72);
+}
+
+.turn-timer-badge-mine {
+  border-color: rgba(134, 239, 172, 0.7) !important;
+  background: linear-gradient(135deg, rgba(4, 47, 32, 0.96), rgba(7, 20, 17, 0.94)) !important;
+  box-shadow: 0 0 0 0.14rem rgba(74, 222, 128, 0.12), 0 0 1.65rem rgba(74, 222, 128, 0.3) !important;
+}
+
+.center-result-pill-your-turn {
+  border: 1px solid rgba(167, 243, 208, 0.58) !important;
+  background: linear-gradient(135deg, rgba(5, 104, 72, 0.96), rgba(3, 43, 31, 0.96)) !important;
+  color: #ecfdf5 !important;
+  box-shadow: 0 0 0 0.18rem rgba(52, 211, 153, 0.12), 0 0 1.55rem rgba(52, 211, 153, 0.4) !important;
+  animation: current-turn-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes current-turn-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
+}
+
+@media (min-width: 768px) {
+  .play-table-shell .seat-count-4 .casino-seat-1,
+  .play-table-shell .seat-count-5 .casino-seat-1,
+  .play-table-shell .seat-count-6 .casino-seat-2 {
+    left: clamp(-2.8rem, -2.55vw, -1.85rem) !important;
+  }
+
+  .play-table-shell .seat-count-3 .casino-seat-2,
+  .play-table-shell .seat-count-4 .casino-seat-3,
+  .play-table-shell .seat-count-5 .casino-seat-4,
+  .play-table-shell .seat-count-6 .casino-seat-4 {
+    right: clamp(-2.8rem, -2.55vw, -1.85rem) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .play-table-shell .seat-count-4 .casino-seat-1,
+  .play-table-shell .seat-count-5 .casino-seat-1,
+  .play-table-shell .seat-count-6 .casino-seat-2 {
+    left: 0.48rem !important;
+  }
+
+  .play-table-shell .seat-count-3 .casino-seat-2,
+  .play-table-shell .seat-count-4 .casino-seat-3,
+  .play-table-shell .seat-count-5 .casino-seat-4,
+  .play-table-shell .seat-count-6 .casino-seat-4 {
+    right: 0.48rem !important;
+  }
+}
+
+.auth-restore-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  margin-top: 0.55rem;
+  color: #9fb2aa;
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+:root:not(.dark) .auth-restore-note { color: #526b61; }
+
+@media (prefers-reduced-motion: reduce) {
+  .center-result-pill-your-turn { animation: none; }
 }
