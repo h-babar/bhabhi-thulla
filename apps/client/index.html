@@ -7,6 +7,22 @@
       name="description"
       content="Bhabhi Thulla is a real-time multiplayer card game with private rooms, bots, chat, and polished responsive play."
     />
+    <script>
+      (() => {
+        let theme = "dark";
+
+        try {
+          const session = JSON.parse(localStorage.getItem("getaway-cards-session") || "null");
+          if (session?.state?.theme === "light") theme = "light";
+        } catch {
+          // A damaged local preference should never block the game from loading.
+        }
+
+        document.documentElement.classList.toggle("dark", theme === "dark");
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <title>Bhabhi Thulla</title>
   </head>
   <body>

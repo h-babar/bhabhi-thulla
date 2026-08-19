@@ -166,10 +166,7 @@ export function getGameSocket(): GameSocket | undefined {
   return socket;
 }
 
-const initialTheme: ThemeMode =
-  typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+const initialTheme: ThemeMode = "dark";
 
 function applyThemeToDocument(theme: ThemeMode): void {
   if (typeof document === "undefined") return;
@@ -439,7 +436,7 @@ export const useGameStore = create<GameStore>()(
         musicVolume: 0.34,
         cardStyle: "classic",
         tableTheme: "casino",
-        tableLayout: "grand",
+        tableLayout: "compact",
         weatherTheme: "sunny",
         goHome: () => {
           set({ screen: "home", error: undefined });

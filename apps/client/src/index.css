@@ -16067,18 +16067,18 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   background: radial-gradient(ellipse at center, rgba(40, 173, 121, 0.1), transparent 62%);
 }
 
-/* Classic casino: walnut rail, bottle-green wool felt, and restrained brass trim. */
+/* Casino: polished walnut surrounding a glass-lit emerald felt surface. */
 .play-table-shell.table-theme-casino {
-  --table-felt: #0b563c;
-  --table-felt-deep: #032a20;
-  --table-rim: #603316;
-  --table-rim-deep: #190b05;
-  --table-rim-glow: rgba(210, 157, 59, 0.44);
-  --table-trim: rgba(231, 197, 103, 0.72);
-  --table-centre-light: rgba(127, 219, 172, 0.19);
-  --table-grain: rgba(232, 220, 175, 0.035);
-  --table-accent: rgba(226, 190, 91, 0.54);
-  --table-rim-highlight: rgba(255, 220, 154, 0.2);
+  --table-felt: #08724b;
+  --table-felt-deep: #012a20;
+  --table-rim: #563019;
+  --table-rim-deep: #120704;
+  --table-rim-glow: rgba(210, 162, 67, 0.42);
+  --table-trim: rgba(236, 205, 121, 0.76);
+  --table-centre-light: rgba(83, 239, 169, 0.26);
+  --table-grain: rgba(213, 255, 233, 0.035);
+  --table-accent: rgba(232, 197, 99, 0.56);
+  --table-rim-highlight: rgba(255, 226, 170, 0.2);
   --table-rim-pattern:
     repeating-linear-gradient(7deg, rgba(255, 226, 166, 0.035) 0 1px, transparent 1px 15px),
     repeating-linear-gradient(97deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 24px);
@@ -16099,38 +16099,41 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
 
 .play-table-shell.table-theme-casino::before {
   background:
-    radial-gradient(ellipse at 50% 40%, rgba(177, 239, 201, 0.16), transparent 31%),
-    radial-gradient(ellipse at 50% 54%, #0c6345 0%, #094d37 44%, #043526 73%, #021d17 100%),
-    repeating-linear-gradient(33deg, rgba(245, 237, 203, 0.022) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(93deg, rgba(220, 196, 123, 0.02) 0 1px, transparent 1px 11px) !important;
+    radial-gradient(ellipse at 50% -12%, rgba(226, 255, 242, 0.2), transparent 41%),
+    radial-gradient(ellipse at 50% 38%, rgba(61, 232, 156, 0.3), transparent 36%),
+    radial-gradient(ellipse at 50% 56%, #0b8054 0%, #086344 42%, #034330 73%, #011f18 100%),
+    repeating-radial-gradient(circle at 50% 48%, rgba(224, 255, 240, 0.024) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, rgba(210, 255, 232, 0.016) 0 1px, transparent 1px 10px) !important;
   box-shadow:
     inset 0 0 0 0.19rem rgba(0, 0, 0, 0.58),
-    inset 0 0 0 0.34rem rgba(229, 193, 94, 0.64),
+    inset 0 0 0 0.34rem rgba(235, 205, 121, 0.68),
     inset 0 0 0 0.58rem rgba(29, 15, 7, 0.78),
-    inset 0 2rem 4rem rgba(255, 255, 255, 0.065),
-    inset 0 -4.2rem 7rem rgba(0, 0, 0, 0.48) !important;
+    inset 0 2rem 4.5rem rgba(221, 255, 239, 0.1),
+    inset 0 -4.2rem 7rem rgba(0, 0, 0, 0.5),
+    inset 0 0 5rem rgba(15, 199, 125, 0.08) !important;
 }
 
 .play-table-shell.table-theme-casino::after {
   border-color: rgba(242, 208, 111, 0.72) !important;
   background:
-    radial-gradient(ellipse at 50% 46%, rgba(121, 218, 169, 0.08), transparent 37%),
-    radial-gradient(ellipse at center, transparent 0 55%, rgba(0, 0, 0, 0.28) 100%) !important;
+    radial-gradient(ellipse at 50% 4%, rgba(224, 255, 241, 0.1), transparent 40%),
+    radial-gradient(ellipse at 50% 45%, rgba(91, 244, 174, 0.11), transparent 39%),
+    radial-gradient(ellipse at center, transparent 0 53%, rgba(0, 18, 13, 0.36) 100%) !important;
   box-shadow:
     inset 0 0 0 1px rgba(255, 244, 205, 0.1),
-    inset 0 0 3.4rem rgba(0, 0, 0, 0.25),
-    0 0 1.4rem rgba(224, 182, 76, 0.14) !important;
+    inset 0 0 3.4rem rgba(0, 20, 14, 0.25),
+    0 0 1.4rem rgba(224, 182, 76, 0.16) !important;
 }
 
 .play-table-shell.table-theme-casino .trick-table-oval {
   background:
-    radial-gradient(ellipse at 50% 46%, rgba(122, 224, 172, 0.15), transparent 36%),
-    radial-gradient(ellipse at center, rgba(10, 92, 62, 0.95), rgba(5, 57, 41, 0.96) 68%, rgba(2, 31, 24, 0.98) 100%),
-    repeating-linear-gradient(32deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 8px) !important;
+    radial-gradient(ellipse at 50% 39%, rgba(120, 255, 191, 0.18), transparent 37%),
+    radial-gradient(ellipse at center, rgba(8, 116, 76, 0.95), rgba(4, 72, 50, 0.97) 68%, rgba(1, 34, 26, 0.99) 100%),
+    repeating-radial-gradient(circle at center, rgba(226, 255, 241, 0.02) 0 1px, transparent 1px 8px) !important;
   box-shadow:
     0 0 0 1px rgba(230, 196, 102, 0.2),
-    inset 0 1.5rem 4rem rgba(255, 255, 255, 0.045),
-    inset 0 -3.4rem 6rem rgba(0, 0, 0, 0.32),
+    inset 0 1.5rem 4rem rgba(224, 255, 241, 0.075),
+    inset 0 -3.4rem 6rem rgba(0, 20, 14, 0.34),
     0 1.4rem 3rem rgba(0, 0, 0, 0.28) !important;
 }
 
