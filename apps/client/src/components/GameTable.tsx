@@ -2062,14 +2062,15 @@ function RoundSummaryPanel({
   }
 
   const matchComplete =
-    state.status === "game_over" && state.tournament?.status !== "active";
+    (state.status === "game_over" && state.tournament?.status !== "active") ||
+    (state.roomMode === "quick" && state.status === "round_over");
   const nextButtonLabel = state.tournament
     ? state.tournament.status === "active"
       ? "Next Stage"
       : state.tournament.status === "won"
         ? "Return Home"
         : "Return Home"
-    : state.status === "game_over"
+    : state.status === "game_over" || state.roomMode === "quick"
       ? "Return Home"
       : "Next Round";
   const bhabhi = summary.scoreLines.find((line) => line.isBhabhi);

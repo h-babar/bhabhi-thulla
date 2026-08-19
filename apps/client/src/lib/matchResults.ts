@@ -62,7 +62,10 @@ export function buildShareableMatchResult(
 ): ShareableMatchResult | undefined {
   const summary = state.roundSummaries[0];
   const completedTournamentStage = state.roomMode === "tournament" && state.status === "round_over";
-  if (!summary || (state.status !== "game_over" && !completedTournamentStage)) return undefined;
+  const completedQuickMatch = state.roomMode === "quick" && state.status === "round_over";
+  if (!summary || (state.status !== "game_over" && !completedTournamentStage && !completedQuickMatch)) {
+    return undefined;
+  }
 
   const escapeRank = new Map(state.escapeOrder.map((id, index) => [id, index + 1]));
   const players = summary.scoreLines
