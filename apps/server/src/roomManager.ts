@@ -192,7 +192,7 @@ export class RoomManager {
       settings: {
         ...payload.settings,
         maxPlayers: 4,
-        targetScore: payload.settings?.targetScore ?? 5,
+        targetScore: 1,
         turnSeconds: payload.settings?.turnSeconds ?? 20
       }
     });

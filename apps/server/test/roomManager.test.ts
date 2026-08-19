@@ -293,7 +293,7 @@ test("registered players can recover an active seat from another device", async 
   await wait(15);
 });
 
-test("quick play marks the room so its compact HUD can omit round progress", async () => {
+test("quick play is a single-hand match with a compact HUD", async () => {
   const db = new FakeDatabase();
   const manager = new RoomManager(
     db,
@@ -301,9 +301,15 @@ test("quick play marks the room so its compact HUD can omit round progress", asy
     () => undefined,
     { reconnectGraceMs: 10 }
   );
-  const created = manager.quickPlay({ username: "Tester", avatar: "Aero" });
+  const created = manager.quickPlay({
+    username: "Tester",
+    avatar: "Aero",
+    settings: { targetScore: 8 }
+  });
 
-  assert.equal(manager.getPublicState(created.roomCode!, created.playerId!)?.roomMode, "quick");
+  const quickState = manager.getPublicState(created.roomCode!, created.playerId!);
+  assert.equal(quickState?.roomMode, "quick");
+  assert.equal(quickState?.settings.targetScore, 1);
   manager.quitRoom(created.roomCode!, created.playerId!, false);
   await wait(25);
   assert.equal(manager.getPublicState(created.roomCode!), undefined);

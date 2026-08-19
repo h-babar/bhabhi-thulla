@@ -231,7 +231,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
               <div className="home-mode-launcher">
                 <button
                   className="home-mode-card is-primary"
-                  onClick={() => quickPlay("normal", { targetScore, turnSeconds, funMode })}
+                  onClick={() => quickPlay("normal", { targetScore: 1, turnSeconds, funMode })}
                 >
                   <span className="home-mode-icon"><Play size={22} fill="currentColor" /></span>
                   <span>
