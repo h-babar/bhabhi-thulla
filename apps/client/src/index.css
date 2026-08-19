@@ -16717,3 +16717,75 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     color: #fecaca !important;
   }
 }
+
+/* Final trick-lane spacing: keep status and opponent cards clear of one another. */
+@media (min-width: 768px) {
+  .turn-owner-banner {
+    top: clamp(5.1rem, 9.2vh, 6.4rem);
+    right: clamp(5.5rem, 7vw, 8rem);
+    left: auto;
+    min-width: 9.25rem;
+    max-width: 13.5rem;
+    transform: none;
+  }
+
+  .table-phrase-bubble {
+    top: clamp(5.4rem, 9vh, 6.6rem) !important;
+    right: auto !important;
+    left: clamp(5.5rem, 9vw, 9rem) !important;
+    translate: 0 0 !important;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .center-play-grid {
+    width: min(19.5rem, 80vw) !important;
+  }
+
+  .center-play-seat-1 {
+    left: 30% !important;
+    top: 52% !important;
+  }
+
+  .center-play-seat-3 {
+    left: 70% !important;
+    top: 52% !important;
+  }
+
+  .table-phrase-bubble {
+    top: 8.75rem !important;
+    right: 0.65rem !important;
+    left: auto !important;
+    max-width: 8.5rem !important;
+  }
+
+  .play-table-shell .seat-count-4 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-2 .seat-card-stack,
+  .play-table-shell .seat-count-3 .casino-seat-2 .seat-card-stack,
+  .play-table-shell .seat-count-4 .casino-seat-3 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-4 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-4 .seat-card-stack {
+    position: absolute !important;
+    top: -5.7rem !important;
+    left: 50% !important;
+    width: 8rem !important;
+    height: 3.5rem !important;
+    margin: 0 !important;
+    translate: -50% 0 !important;
+    transform-origin: center center !important;
+  }
+
+  .play-table-shell .seat-count-4 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-2 .seat-card-stack {
+    transform: rotate(88deg) scale(0.76) !important;
+  }
+
+  .play-table-shell .seat-count-3 .casino-seat-2 .seat-card-stack,
+  .play-table-shell .seat-count-4 .casino-seat-3 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-4 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-4 .seat-card-stack {
+    transform: rotate(-88deg) scale(0.76) !important;
+  }
+}
