@@ -614,6 +614,16 @@ export function GameTable() {
                   ))}
                 </div>
               )}
+
+              {!isSpectator && me ? (
+                <div className="mobile-local-seat" aria-label={`${me.username}, your seat`}>
+                  <SeatIdentity
+                    player={me}
+                    active={me.id === state.activePlayerId}
+                    host={me.id === state.hostId}
+                  />
+                </div>
+              ) : null}
             </section>
 
             <RoundSummaryPanel

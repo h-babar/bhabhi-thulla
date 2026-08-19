@@ -87,7 +87,6 @@ export function CardView({
   const red = card.suit === "hearts" || card.suit === "diamonds";
   const interactive = Boolean(onClick || onDoubleClick || onDragPlay);
   const glyph = SUIT_GLYPHS[card.suit];
-  const faceRank = card.rank === "J" || card.rank === "Q" || card.rank === "K";
   const cardClassName = clsx(
     "card-face shrink-0 text-left",
     styleClass,
@@ -105,15 +104,8 @@ export function CardView({
         <span>{card.rank}</span>
         <span>{glyph}</span>
       </span>
-      <span className={clsx("card-pip-center grid flex-1 place-items-center text-4xl leading-none sm:text-5xl", faceRank && "card-face-art", compact && "text-3xl sm:text-4xl")}>
-        {faceRank ? (
-          <span className="grid justify-items-center leading-none">
-            <span className="text-[0.38em] font-black uppercase tracking-[0.12em]">{card.rank}</span>
-            <span>{glyph}</span>
-          </span>
-        ) : (
-          glyph
-        )}
+      <span className={clsx("card-pip-center grid flex-1 place-items-center text-4xl leading-none sm:text-5xl", compact && "text-3xl sm:text-4xl")}>
+        {glyph}
       </span>
       <span className={clsx("card-corner card-corner-bottom self-end text-lg font-black leading-none sm:text-xl", compact && "text-sm sm:text-base")}>
         <span>{card.rank}</span>

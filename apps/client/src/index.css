@@ -16446,7 +16446,7 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
 
 @media (max-width: 767px) {
   .play-table-shell .casino-seat-layer .casino-seat-you {
-    bottom: calc(var(--mobile-hand-zone-height, 14rem) - 1.75rem) !important;
+    display: none !important;
   }
 
   .active-chat-button {
@@ -16458,5 +16458,62 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     justify-content: center !important;
     border-radius: 999px !important;
     padding: 0 !important;
+  }
+}
+
+/* Mobile table finish: continuous felt lighting, a clear hand, then the local seat. */
+.mobile-local-seat {
+  display: none;
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .play-table-shell .table-spotlight {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    filter: none !important;
+    background:
+      radial-gradient(ellipse at 50% 14%, rgba(255, 255, 255, 0.13), transparent 42%),
+      radial-gradient(ellipse at 50% 52%, var(--table-centre-light), transparent 68%) !important;
+    opacity: 0.58 !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone,
+  .active-hand-dock .player-hand-safe-zone.is-two-row-hand {
+    height: calc(100% - var(--mobile-action-bar-height) - 2.45rem) !important;
+  }
+
+  .active-hand-dock .player-hand-safe-zone.is-two-row-hand {
+    padding-top: 0.15rem !important;
+  }
+
+  .mobile-local-seat {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--mobile-action-bar-height) + 0.4rem);
+    z-index: 35;
+    display: block;
+    width: 7rem;
+    height: 4.25rem;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .mobile-local-seat .seat-identity {
+    position: absolute !important;
+    left: 50% !important;
+    bottom: 0 !important;
+    gap: 0.06rem !important;
+    transform: translateX(-50%) scale(0.8) !important;
+    transform-origin: center bottom !important;
+  }
+
+  .mobile-local-seat .seat-avatar-token {
+    width: 3.15rem !important;
+    height: 3.15rem !important;
+  }
+
+  .mobile-local-seat .seat-nameplate {
+    display: none !important;
   }
 }
