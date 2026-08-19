@@ -16366,6 +16366,12 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
 /* Keep every felt surface smooth: theme character comes from color and light, not stripes. */
 .play-table-shell[class*="table-theme-"] {
   --table-felt-pattern: none;
+  --table-rim-pattern: none;
+  background:
+    radial-gradient(ellipse at 50% -18%, var(--table-rim-highlight), transparent 44%),
+    linear-gradient(145deg, var(--table-rim-deep), var(--table-rim) 46%, var(--table-rim-deep)) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
 }
 
 .play-table-shell[class*="table-theme-"]::before {
@@ -16378,6 +16384,9 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
       var(--table-felt) 45%,
       var(--table-felt-deep) 100%
     ) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  mask-image: none !important;
 }
 
 .play-table-shell[class*="table-theme-"]::after {
@@ -16385,12 +16394,21 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     radial-gradient(ellipse at 50% 5%, rgba(255, 255, 255, 0.07), transparent 42%),
     radial-gradient(ellipse at 50% 46%, color-mix(in srgb, var(--table-accent) 14%, transparent), transparent 42%),
     radial-gradient(ellipse at center, transparent 0 56%, color-mix(in srgb, var(--table-felt-deep) 68%, transparent) 100%) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
 }
 
 .play-table-shell[class*="table-theme-"] .trick-table-oval {
   background:
     radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--table-centre-light) 84%, transparent), transparent 39%),
     radial-gradient(ellipse at center, var(--table-felt), var(--table-felt-deep) 100%) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+}
+
+.play-table-shell[class*="table-theme-"] .table-spotlight {
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
 }
 
 .play-table-shell.table-theme-casino::before {
@@ -16398,10 +16416,14 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     radial-gradient(ellipse at 50% -10%, rgba(233, 255, 244, 0.24), transparent 40%),
     radial-gradient(ellipse at 50% 40%, rgba(66, 255, 173, 0.27), transparent 40%),
     linear-gradient(165deg, #0d8f5e 0%, #08764f 45%, #05563c 72%, #023426 100%) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
 }
 
 .play-table-shell.table-theme-casino .trick-table-oval {
   background:
     radial-gradient(ellipse at 50% 39%, rgba(128, 255, 195, 0.21), transparent 39%),
     radial-gradient(ellipse at center, rgba(9, 137, 89, 0.96), rgba(5, 90, 60, 0.98) 68%, rgba(2, 48, 35, 0.99) 100%) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
 }
