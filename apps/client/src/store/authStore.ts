@@ -1,4 +1,6 @@
 import type {
+  DailyRewardRecord,
+  DailyRewardStatus,
   GuestProgressTransfer,
   PlayerAchievement,
   PlayerPreferences,
@@ -7,6 +9,7 @@ import type {
   UpdatePlayerProfileInput,
   UsernameAvailabilityResponse
 } from "@getaway-cards/shared";
+import { claimDailyReward as calculateDailyReward, getDailyRewardStatus } from "@getaway-cards/shared";
 import {
   getRedirectResult,
   onIdTokenChanged,
@@ -18,7 +21,9 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
   checkUsername,
+  claimDailyReward as claimDailyRewardRequest,
   exchangeGoogleToken,
+  loadDailyReward,
   mergeGuestProgress,
   updateMyProfile
 } from "../lib/authApi.js";
@@ -36,6 +41,7 @@ export interface LocalGuestProfile {
   stats: PlayerStats;
   preferences: PlayerPreferences;
   achievements: PlayerAchievement[];
+  dailyRewards?: DailyRewardRecord;
   createdAt: number;
 }
 
@@ -47,12 +53,17 @@ interface AuthStore {
   error?: string;
   profileOpen: boolean;
   upgradeOpen: boolean;
+  dailyReward?: DailyRewardStatus;
+  rewardLoading: boolean;
+  rewardNotice?: string;
   initialize: () => Promise<void>;
   continueAsGuest: (displayName: string) => void;
   signInWithGoogle: (mergeGuest?: boolean) => Promise<void>;
   saveGuestProgress: () => Promise<void>;
   updateGuest: (input: { displayName?: string; avatarId?: string; preferences?: Partial<PlayerPreferences> }) => void;
   recordGuestMatch: (result: { won: boolean; wasBhabhi: boolean; tricksWon: number; tournamentWin: boolean }) => void;
+  refreshRewards: () => Promise<void>;
+  claimReward: () => Promise<void>;
   updateRegistered: (input: UpdatePlayerProfileInput) => Promise<boolean>;
   checkUsername: (username: string) => Promise<UsernameAvailabilityResponse>;
   logout: () => Promise<void>;
@@ -75,6 +86,7 @@ export const useAuthStore = create<AuthStore>()(
       status: "initializing",
       profileOpen: false,
       upgradeOpen: false,
+      rewardLoading: false,
       initialize: async () => {
         if (!isFirebaseConfigured()) {
           set({ status: get().guest ? "guest" : "choice" });
@@ -125,6 +137,7 @@ export const useAuthStore = create<AuthStore>()(
               stats: emptyStats(),
               preferences: defaultPreferences(),
               achievements: [],
+              dailyRewards: { streak: 0, totalClaims: 0 },
               createdAt: Date.now()
             };
         authFlowVersion += 1;
@@ -190,6 +203,67 @@ export const useAuthStore = create<AuthStore>()(
           }
         });
       },
+      refreshRewards: async () => {
+        const guest = get().guest;
+        if (get().status === "guest" && guest) {
+          set({
+            dailyReward: getDailyRewardStatus(guest.dailyRewards ?? { streak: 0, totalClaims: 0 }),
+            rewardLoading: false
+          });
+          return;
+        }
+        const token = get().idToken;
+        if (!token || get().status !== "registered") return;
+        set({ rewardLoading: true });
+        try {
+          const response = await loadDailyReward(token);
+          if (!response.status) throw new Error(response.error ?? "Daily rewards could not be loaded.");
+          set({
+            dailyReward: response.status,
+            profile: response.profile ?? get().profile,
+            rewardLoading: false,
+            error: undefined
+          });
+        } catch (error) {
+          set({ rewardLoading: false, error: authErrorMessage(error) });
+        }
+      },
+      claimReward: async () => {
+        if (get().rewardLoading) return;
+        const guest = get().guest;
+        if (get().status === "guest" && guest) {
+          const claim = calculateDailyReward(guest.dailyRewards ?? { streak: 0, totalClaims: 0 });
+          set({
+            guest: {
+              ...guest,
+              coins: guest.coins + claim.awardedCoins,
+              dailyRewards: claim.record
+            },
+            dailyReward: claim.status,
+            rewardNotice: claim.awardedCoins > 0 ? `+${claim.awardedCoins} Thulla Coins` : "Reward already claimed",
+            rewardLoading: false
+          });
+          return;
+        }
+        const token = get().idToken;
+        if (!token || get().status !== "registered") return;
+        set({ rewardLoading: true, rewardNotice: undefined });
+        try {
+          const response = await claimDailyRewardRequest(token);
+          if (!response.status) throw new Error(response.error ?? "Daily reward could not be claimed.");
+          set({
+            dailyReward: response.status,
+            profile: response.profile ?? get().profile,
+            rewardNotice: response.awardedCoins
+              ? `+${response.awardedCoins} Thulla Coins`
+              : "Reward already claimed",
+            rewardLoading: false,
+            error: undefined
+          });
+        } catch (error) {
+          set({ rewardLoading: false, error: authErrorMessage(error) });
+        }
+      },
       updateRegistered: async (input) => {
         const token = get().idToken;
         if (!token) return false;
@@ -212,13 +286,13 @@ export const useAuthStore = create<AuthStore>()(
         authFlowVersion += 1;
         const auth = await getFirebaseAuth();
         if (auth) await signOut(auth);
-        set({ status: "choice", profile: undefined, idToken: undefined, guest: undefined, profileOpen: false });
+        set({ status: "choice", profile: undefined, idToken: undefined, guest: undefined, profileOpen: false, dailyReward: undefined });
       },
       changePlayer: async () => {
         authFlowVersion += 1;
         const auth = await getFirebaseAuth();
         if (auth?.currentUser) await signOut(auth);
-        set({ status: "choice", profile: undefined, idToken: undefined, guest: undefined, profileOpen: false });
+        set({ status: "choice", profile: undefined, idToken: undefined, guest: undefined, profileOpen: false, dailyReward: undefined });
       },
       openProfile: () => set({ profileOpen: true }),
       closeProfile: () => set({ profileOpen: false }),

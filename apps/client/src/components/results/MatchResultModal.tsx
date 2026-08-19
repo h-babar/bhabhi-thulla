@@ -1,4 +1,4 @@
-import { Home, RotateCcw, Trophy } from "lucide-react";
+import { Coins, Home, RotateCcw, Sparkles, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ShareableMatchResult } from "../../lib/matchResults.js";
 import { renderMatchResultImage } from "../../lib/resultImageRenderer.js";
@@ -6,6 +6,7 @@ import { Modal } from "../Modal.js";
 import { MatchResultCard } from "./MatchResultCard.js";
 import { MatchResultPreview } from "./MatchResultPreview.js";
 import { ShareResultActions } from "./ShareResultActions.js";
+import { useAuthStore } from "../../store/authStore.js";
 
 export function MatchResultModal({
   open,
@@ -26,6 +27,9 @@ export function MatchResultModal({
   const [imageUrl, setImageUrl] = useState<string>();
   const [renderError, setRenderError] = useState<string>();
   const [notice, setNotice] = useState<string>();
+  const guest = useAuthStore((store) => store.guest);
+  const profile = useAuthStore((store) => store.profile);
+  const refreshRewards = useAuthStore((store) => store.refreshRewards);
 
   useEffect(() => {
     if (!open || !result) return undefined;
@@ -57,8 +61,15 @@ export function MatchResultModal({
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
+  useEffect(() => {
+    if (open && result) void refreshRewards();
+  }, [open, refreshRewards, result?.publicMatchId]);
+
   if (!result) return null;
   const playUrl = typeof window === "undefined" ? "https://bhabhi-thulla-alpha.vercel.app" : window.location.origin;
+  const currentPlayer = result.players.find((player) => player.isCurrentPlayer);
+  const earnedCoins = currentPlayer ? (currentPlayer.becameBhabhi ? 35 : 120) : 0;
+  const balance = profile?.coins ?? guest?.coins ?? 0;
 
   return (
     <Modal
@@ -76,6 +87,19 @@ export function MatchResultModal({
           <small>Share the result in one tap or jump straight into another table.</small>
         </div>
       </div>
+
+      {currentPlayer ? (
+        <div className="match-reward-summary">
+          <span className="match-reward-coin"><Coins size={22} /></span>
+          <span className="match-reward-copy">
+            <small>{currentPlayer.becameBhabhi ? "Participation reward" : "Escape reward"}</small>
+            <strong>+{earnedCoins} Thulla Coins</strong>
+          </span>
+          <span className="match-reward-balance">
+            <Sparkles size={15} /> Balance {balance.toLocaleString()}
+          </span>
+        </div>
+      ) : null}
 
       <div className="match-result-modal-grid">
         <MatchResultCard result={result} />

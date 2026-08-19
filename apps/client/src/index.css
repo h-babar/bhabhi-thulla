@@ -15998,6 +15998,252 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
 :root:not(.dark) .home-profile-row small { color: #617970 !important; }
 :root:not(.dark) .home-profile-row > svg { color: #446b5c !important; }
 
+/* Reward economy: wallet, daily streak, and earned-match feedback. */
+.daily-reward-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(239, 201, 101, 0.22);
+  border-radius: 1rem;
+  padding: 0.85rem;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(238, 196, 83, 0.14), transparent 42%),
+    linear-gradient(145deg, rgba(5, 28, 21, 0.97), rgba(8, 19, 17, 0.96));
+  color: #f7fbf9;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.065), 0 0.8rem 1.8rem rgba(0, 0, 0, 0.17);
+}
+
+.daily-reward-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.daily-reward-icon {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border-radius: 0.72rem;
+  background: linear-gradient(145deg, #f5d576, #c68c25);
+  color: #0b1b15;
+  box-shadow: 0 0.45rem 1.2rem rgba(218, 163, 49, 0.22);
+}
+
+.daily-reward-heading small,
+.daily-reward-heading strong {
+  display: block;
+}
+
+.daily-reward-heading small {
+  color: #eac968;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.daily-reward-heading strong {
+  margin-top: 0.08rem;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.daily-wallet-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  border: 1px solid rgba(239, 201, 101, 0.28);
+  border-radius: 999px;
+  padding: 0.38rem 0.55rem;
+  background: rgba(239, 201, 101, 0.1);
+  color: #f5d576;
+  font-size: 0.72rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.daily-reward-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.7rem 0 0.52rem;
+  color: rgba(231, 244, 238, 0.62);
+  font-size: 0.61rem;
+  font-weight: 800;
+}
+
+.daily-reward-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.daily-reward-track {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+.daily-reward-day {
+  display: grid;
+  min-width: 0;
+  min-height: 3.25rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.08rem;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 0.58rem;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(235, 245, 240, 0.48);
+}
+
+.daily-reward-day small {
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.daily-reward-day strong {
+  font-size: 0.57rem;
+  font-weight: 950;
+}
+
+.daily-reward-day.is-claimed {
+  border-color: rgba(73, 218, 165, 0.2);
+  background: rgba(73, 218, 165, 0.08);
+  color: #69dfb5;
+}
+
+.daily-reward-day.is-available {
+  border-color: rgba(245, 213, 118, 0.72);
+  background: linear-gradient(160deg, rgba(245, 213, 118, 0.2), rgba(73, 218, 165, 0.1));
+  color: #ffe292;
+  box-shadow: 0 0 1rem rgba(225, 175, 54, 0.15);
+}
+
+.daily-reward-day.is-loading {
+  animation: reward-shimmer 1.15s ease-in-out infinite alternate;
+}
+
+.daily-reward-claim {
+  display: inline-flex;
+  width: 100%;
+  min-height: 2.45rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.62rem;
+  border: 1px solid rgba(246, 218, 128, 0.55);
+  border-radius: 0.72rem;
+  background: linear-gradient(135deg, #f4d477, #d59a32);
+  color: #081812;
+  font-size: 0.72rem;
+  font-weight: 950;
+  box-shadow: 0 0.65rem 1.35rem rgba(198, 140, 37, 0.16);
+}
+
+.daily-reward-claim:disabled {
+  border-color: rgba(102, 226, 178, 0.16);
+  background: rgba(76, 211, 161, 0.08);
+  color: rgba(175, 224, 205, 0.62);
+  box-shadow: none;
+  cursor: default;
+}
+
+.daily-reward-notice {
+  margin: 0.48rem 0 0;
+  color: #74e4bb;
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.match-reward-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin: -0.25rem 0 1rem;
+  border: 1px solid rgba(245, 211, 111, 0.3);
+  border-radius: 0.9rem;
+  padding: 0.72rem 0.85rem;
+  background: linear-gradient(105deg, rgba(239, 199, 91, 0.12), rgba(57, 218, 160, 0.08));
+}
+
+.match-reward-coin {
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffe497, #cc8f27);
+  color: #092018;
+  box-shadow: 0 0 1.2rem rgba(224, 171, 48, 0.22);
+}
+
+.match-reward-copy small,
+.match-reward-copy strong {
+  display: block;
+}
+
+.match-reward-copy small {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.match-reward-copy strong {
+  margin-top: 0.1rem;
+  color: #f7d77a;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.match-reward-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.38rem 0.55rem;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.66rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+:root:not(.dark) .daily-reward-panel {
+  border-color: rgba(145, 105, 24, 0.22);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(218, 169, 49, 0.16), transparent 42%),
+    linear-gradient(145deg, #fffdf7, #edf7f2);
+  color: #16392c;
+  box-shadow: inset 0 1px #fff, 0 0.8rem 1.8rem rgba(32, 73, 57, 0.1);
+}
+
+:root:not(.dark) .daily-reward-heading small { color: #8d681d; }
+:root:not(.dark) .daily-reward-meta { color: #60766d; }
+:root:not(.dark) .daily-reward-day { border-color: rgba(42, 87, 70, 0.12); background: rgba(25, 96, 69, 0.045); color: #718078; }
+:root:not(.dark) .daily-reward-day.is-claimed { color: #147b58; }
+:root:not(.dark) .daily-reward-day.is-available { color: #765511; }
+
+@keyframes reward-shimmer {
+  from { opacity: 0.35; }
+  to { opacity: 0.75; }
+}
+
+@media (max-width: 520px) {
+  .daily-reward-panel { padding: 0.72rem; }
+  .daily-reward-day { min-height: 2.95rem; border-radius: 0.48rem; }
+  .daily-reward-track { gap: 0.2rem; }
+  .match-reward-summary { grid-template-columns: auto minmax(0, 1fr); }
+  .match-reward-balance { grid-column: 1 / -1; justify-content: center; }
+}
+
 :root:not(.dark) .home-private-actions > button {
   border-color: rgba(19, 132, 92, 0.22);
   background: #e8f6ef;
@@ -16753,10 +16999,20 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   }
 
   .table-phrase-bubble {
-    top: 8.75rem !important;
-    right: 0.65rem !important;
+    top: 9rem !important;
+    right: 0.5rem !important;
     left: auto !important;
-    max-width: 8.5rem !important;
+    max-width: 7rem !important;
+    transform: none !important;
+    translate: 0 0 !important;
+    padding: 0.48rem 0.72rem !important;
+    font-size: 0.72rem !important;
+    line-height: 1 !important;
+    white-space: nowrap;
+  }
+
+  .center-trick-title {
+    top: 2.75rem !important;
   }
 
   .play-table-shell .seat-count-4 .casino-seat-1 .seat-card-stack,

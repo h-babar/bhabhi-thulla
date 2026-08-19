@@ -4,6 +4,7 @@ import type {
   GameState,
   GuestProgressTransfer,
   MatchHistoryEntry,
+  DailyRewardResponse,
   PlayerAchievement,
   PlayerPreferences,
   PlayerProfile,
@@ -13,6 +14,7 @@ import type {
   FriendRelationship,
   GameInviteStatus
 } from "@getaway-cards/shared";
+import { claimDailyReward, getDailyRewardStatus } from "@getaway-cards/shared";
 import { mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
@@ -248,6 +250,62 @@ export class GameDatabase {
       "SELECT id FROM users WHERE auth_provider = 'google' AND provider_user_id = ?"
     ).get(providerUserId) as { id: string } | undefined;
     return row ? this.getPlayerProfile(row.id) : undefined;
+  }
+
+  getDailyReward(userId: string): DailyRewardResponse {
+    const profile = this.getPlayerProfile(userId);
+    if (!profile) return { ok: false, error: "Player profile was not found." };
+    const row = this.db.prepare(
+      "SELECT last_claim_date, streak, total_claims FROM daily_rewards WHERE user_id = ?"
+    ).get(userId) as { last_claim_date: string | null; streak: number; total_claims: number } | undefined;
+    const status = getDailyRewardStatus({
+      lastClaimDate: row?.last_claim_date ?? undefined,
+      streak: Number(row?.streak ?? 0),
+      totalClaims: Number(row?.total_claims ?? 0)
+    });
+    return { ok: true, status, profile };
+  }
+
+  claimDailyReward(userId: string): DailyRewardResponse {
+    const profile = this.getPlayerProfile(userId);
+    if (!profile) return { ok: false, error: "Player profile was not found." };
+    const now = Date.now();
+    this.db.exec("BEGIN IMMEDIATE;");
+    try {
+      const row = this.db.prepare(
+        "SELECT last_claim_date, streak, total_claims FROM daily_rewards WHERE user_id = ?"
+      ).get(userId) as { last_claim_date: string | null; streak: number; total_claims: number } | undefined;
+      const claim = claimDailyReward({
+        lastClaimDate: row?.last_claim_date ?? undefined,
+        streak: Number(row?.streak ?? 0),
+        totalClaims: Number(row?.total_claims ?? 0)
+      }, now);
+      if (claim.awardedCoins === 0) {
+        this.db.exec("COMMIT;");
+        return { ok: true, status: claim.status, profile };
+      }
+      this.db.prepare(
+        `INSERT INTO daily_rewards (user_id, last_claim_date, streak, total_claims, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           last_claim_date = excluded.last_claim_date,
+           streak = excluded.streak,
+           total_claims = excluded.total_claims,
+           updated_at = excluded.updated_at`
+      ).run(userId, claim.record.lastClaimDate ?? null, claim.record.streak, claim.record.totalClaims, now);
+      this.db.prepare("UPDATE users SET coins = coins + ?, updated_at = ?, last_active_at = ? WHERE id = ?")
+        .run(claim.awardedCoins, now, now, userId);
+      this.db.exec("COMMIT;");
+      return {
+        ok: true,
+        status: claim.status,
+        awardedCoins: claim.awardedCoins,
+        profile: this.getPlayerProfile(userId)
+      };
+    } catch (error) {
+      this.db.exec("ROLLBACK;");
+      throw error;
+    }
   }
 
   isUsernameAvailable(username: string, currentUserId?: string): boolean {
@@ -1017,6 +1075,14 @@ export class GameDatabase {
         language TEXT NOT NULL DEFAULT 'en',
         share_avatar_in_results INTEGER NOT NULL DEFAULT 1,
         share_username_in_results INTEGER NOT NULL DEFAULT 1
+      );
+
+      CREATE TABLE IF NOT EXISTS daily_rewards (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        last_claim_date TEXT,
+        streak INTEGER NOT NULL DEFAULT 0,
+        total_claims INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS achievements (

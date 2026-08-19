@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createGameState, createPlayer, toPublicGameState } from "@getaway-cards/shared";
+import { createGameState, createPlayer, getDailyRewardStatus, toPublicGameState } from "@getaway-cards/shared";
 import { GameDatabase } from "../src/db.js";
 
 function withDatabase(run: (database: GameDatabase) => void): void {
@@ -35,6 +35,44 @@ test("returning Google users receive the same permanent profile", () => {
     assert.equal(second.stats.gamesPlayed, 0);
     assert.equal(second.email, "player@example.com");
   });
+});
+
+test("daily rewards add coins once and remain idempotent after refresh", () => {
+  withDatabase((database) => {
+    const profile = database.getOrCreateGoogleProfile({
+      providerUserId: "google-daily-reward",
+      email: "rewards@example.com",
+      displayName: "Reward Player"
+    });
+
+    const before = database.getDailyReward(profile.id);
+    assert.equal(before.status?.canClaim, true);
+    assert.equal(before.status?.rewardAmount, 50);
+
+    const claimed = database.claimDailyReward(profile.id);
+    assert.equal(claimed.awardedCoins, 50);
+    assert.equal(claimed.profile?.coins, 300);
+    assert.equal(claimed.status?.claimedToday, true);
+
+    const duplicate = database.claimDailyReward(profile.id);
+    assert.equal(duplicate.awardedCoins, undefined);
+    assert.equal(duplicate.profile?.coins, 300);
+    assert.equal(duplicate.status?.canClaim, false);
+  });
+});
+
+test("the seven-day reward track rolls back to day one cleanly", () => {
+  const now = Date.parse("2026-08-19T12:00:00.000Z");
+  const status = getDailyRewardStatus({
+    lastClaimDate: "2026-08-18",
+    streak: 7,
+    totalClaims: 7
+  }, now);
+
+  assert.equal(status.nextRewardDay, 1);
+  assert.equal(status.rewardAmount, 50);
+  assert.equal(status.calendar[0]?.state, "available");
+  assert.equal(status.calendar[6]?.state, "locked");
 });
 
 test("share-card privacy preferences persist with safe defaults", () => {

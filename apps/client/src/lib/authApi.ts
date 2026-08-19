@@ -1,5 +1,6 @@
 import type {
   AuthProfileResponse,
+  DailyRewardResponse,
   GuestProgressTransfer,
   UpdatePlayerProfileInput,
   UsernameAvailabilityResponse
@@ -12,6 +13,14 @@ export async function exchangeGoogleToken(token: string): Promise<AuthProfileRes
 
 export async function loadMyProfile(token: string): Promise<AuthProfileResponse> {
   return authRequest<AuthProfileResponse>("/api/profile/me", token);
+}
+
+export async function loadDailyReward(token: string): Promise<DailyRewardResponse> {
+  return authRequest<DailyRewardResponse>("/api/rewards/daily", token);
+}
+
+export async function claimDailyReward(token: string): Promise<DailyRewardResponse> {
+  return authRequest<DailyRewardResponse>("/api/rewards/daily/claim", token, { method: "POST" });
 }
 
 export async function updateMyProfile(

@@ -45,6 +45,7 @@ import { useAuthStore } from "../store/authStore.js";
 import { profileAvatarSource } from "../lib/profileAvatar.js";
 import { FriendsButton } from "./friends/FriendsButton.js";
 import { FriendsOnlineWidget } from "./friends/FriendsOnlineWidget.js";
+import { DailyRewardPanel } from "./rewards/DailyRewardPanel.js";
 
 interface HomeScreenProps {
   initialRoomCode?: string;
@@ -299,6 +300,8 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
               </span>
               <ChevronRight size={18} />
             </button>
+
+            <DailyRewardPanel />
 
             <div className="home-command-heading">
               <div>

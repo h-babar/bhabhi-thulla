@@ -1,5 +1,6 @@
 import type {
   AuthProfileResponse,
+  DailyRewardResponse,
   GuestProgressTransfer,
   PlayerPreferences,
   UpdatePlayerProfileInput,
@@ -35,6 +36,21 @@ export function createProfileRouter(db: GameDatabase): Router {
     const profile = db.findProfileByProviderUserId(request.authUser!.uid) ?? profileForDecodedUser(db, request.authUser!);
     response.json({ ok: true, profile });
   });
+
+  router.get("/rewards/daily", requireAuth(), (request: AuthenticatedRequest, response: Response<DailyRewardResponse>) => {
+    const profile = db.findProfileByProviderUserId(request.authUser!.uid) ?? profileForDecodedUser(db, request.authUser!);
+    response.json(db.getDailyReward(profile.id));
+  });
+
+  router.post(
+    "/rewards/daily/claim",
+    requireAuth(),
+    updateLimit,
+    (request: AuthenticatedRequest, response: Response<DailyRewardResponse>) => {
+      const profile = db.findProfileByProviderUserId(request.authUser!.uid) ?? profileForDecodedUser(db, request.authUser!);
+      response.json(db.claimDailyReward(profile.id));
+    }
+  );
 
   router.get(
     "/profile/username/:username",
