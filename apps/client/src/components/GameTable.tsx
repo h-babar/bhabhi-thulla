@@ -102,6 +102,7 @@ export function GameTable() {
   const hurryTurnRef = useRef<string | undefined>(undefined);
   const lastPlayedSoundRef = useRef<string | undefined>(undefined);
   const lastTurnSoundRef = useRef<string | undefined>(undefined);
+  const capturedMatchResultRef = useRef<string | undefined>(undefined);
   const openedMatchResultRef = useRef<string | undefined>(undefined);
   const sharePreferences = registeredProfile?.preferences ?? guestProfile?.preferences;
   const shareableMatchResult = useMemo(
@@ -132,8 +133,8 @@ export function GameTable() {
 
   useEffect(() => {
     const resultId = shareableMatchResult?.publicMatchId;
-    if (!resultId || !state || openedMatchResultRef.current === resultId) return undefined;
-    openedMatchResultRef.current = resultId;
+    if (!resultId || !state || capturedMatchResultRef.current === resultId) return;
+    capturedMatchResultRef.current = resultId;
     const firstBot = state.players.find((player) => player.isBot);
     captureMatchResult(shareableMatchResult, {
       roomMode: state.roomMode,
@@ -152,14 +153,20 @@ export function GameTable() {
           }
         : undefined
     });
+  }, [captureMatchResult, shareableMatchResult, state]);
+
+  useEffect(() => {
+    const resultId = shareableMatchResult?.publicMatchId;
+    if (!resultId || openedMatchResultRef.current === resultId) return undefined;
     const celebrationDelay = state?.winCelebration
       ? Math.max(350, state.winCelebration.endsAt - Date.now() + 250)
       : 500;
     const timeout = window.setTimeout(() => {
+      openedMatchResultRef.current = resultId;
       openMatchResult();
     }, celebrationDelay);
     return () => window.clearTimeout(timeout);
-  }, [captureMatchResult, openMatchResult, shareableMatchResult, state]);
+  }, [openMatchResult, shareableMatchResult?.publicMatchId, state?.winCelebration?.endsAt]);
 
   useEffect(() => {
     setSelectedIds([]);

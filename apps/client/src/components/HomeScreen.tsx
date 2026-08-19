@@ -23,6 +23,7 @@ import {
   Play,
   Plus,
   Search,
+  Share2,
   Settings,
   Shield,
   Swords,
@@ -64,6 +65,8 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
   const rooms = useGameStore((store) => store.rooms);
   const socketStatus = useGameStore((store) => store.socketStatus);
   const activeGame = useGameStore((store) => store.activeGame);
+  const lastMatchResult = useGameStore((store) => store.lastMatchResult);
+  const openMatchResult = useGameStore((store) => store.openMatchResult);
   const rejoinActiveGame = useGameStore((store) => store.rejoinActiveGame);
   const createRoom = useGameStore((store) => store.createRoom);
   const joinRoom = useGameStore((store) => store.joinRoom);
@@ -176,6 +179,30 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
               </div>
               <button className="primary-button px-5 py-2.5" onClick={rejoinActiveGame}>
                 <LogIn size={17} /> Rejoin Game
+              </button>
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {lastMatchResult ? (
+            <motion.section
+              className="home-last-result-banner"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <span className="home-last-result-icon"><Trophy size={20} /></span>
+              <span className="home-last-result-copy">
+                <small>Latest match</small>
+                <strong>
+                  {lastMatchResult.players.find((player) => player.becameBhabhi)?.displayName ?? "Last player"} became Bhabhi
+                </strong>
+                <em>Result #{lastMatchResult.publicMatchId} is ready to share</em>
+              </span>
+              <button type="button" onClick={openMatchResult}>
+                <Share2 size={17} />
+                View Share Card
               </button>
             </motion.section>
           ) : null}
