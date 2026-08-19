@@ -13,7 +13,7 @@
 
         try {
           const session = JSON.parse(localStorage.getItem("getaway-cards-session") || "null");
-          if (session?.state?.theme === "light") theme = "light";
+          if (session?.version >= 1 && session?.state?.theme === "light") theme = "light";
         } catch {
           // A damaged local preference should never block the game from loading.
         }

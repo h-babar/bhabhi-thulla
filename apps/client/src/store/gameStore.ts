@@ -808,6 +808,21 @@ export const useGameStore = create<GameStore>()(
     {
       name: "getaway-cards-session",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persistedState, version) => {
+        const state = persistedState as Partial<GameStore>;
+        if (version >= 1) return state;
+
+        return {
+          ...state,
+          theme: "dark",
+          cardStyle: "classic",
+          tableTheme: "casino",
+          tableLayout: "compact",
+          matchResultOpen: false,
+          matchResultPending: false
+        };
+      },
       partialize: (state) => ({
         username: state.username,
         avatar: state.avatar,
