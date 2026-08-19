@@ -16517,3 +16517,203 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     display: none !important;
   }
 }
+
+/* Turn ownership stays visible while the mobile dock keeps secondary actions tucked away. */
+.turn-owner-banner {
+  position: absolute;
+  top: clamp(5.3rem, 10.5vh, 6.8rem);
+  left: 50%;
+  z-index: 72;
+  display: flex;
+  min-width: 9.5rem;
+  max-width: min(15rem, calc(100% - 3rem));
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(3, 18, 14, 0.84);
+  padding: 0.42rem 0.8rem;
+  color: #f4fff9;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 0.75rem 1.8rem rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(14px) saturate(1.15);
+  pointer-events: none;
+}
+
+.turn-owner-banner > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.02rem;
+  text-align: left;
+}
+
+.turn-owner-banner small {
+  color: #99f6e4;
+  font-size: 0.5rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.turn-owner-banner strong {
+  overflow: hidden;
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.turn-owner-pulse {
+  width: 0.52rem;
+  height: 0.52rem;
+  flex: 0 0 0.52rem;
+  border-radius: 50%;
+  background: #2dd4bf;
+  box-shadow: 0 0 0 0.22rem rgba(45, 212, 191, 0.14), 0 0 0.8rem rgba(45, 212, 191, 0.72);
+}
+
+.turn-owner-banner-yours {
+  border-color: rgba(250, 204, 21, 0.5);
+  background: rgba(31, 26, 5, 0.9);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 0 1.35rem rgba(250, 204, 21, 0.2);
+}
+
+.turn-owner-banner-yours .turn-owner-pulse {
+  background: #facc15;
+  box-shadow: 0 0 0 0.22rem rgba(250, 204, 21, 0.14), 0 0 0.9rem rgba(250, 204, 21, 0.74);
+}
+
+.mobile-chat-action,
+.mobile-more-action,
+.mobile-turn-context {
+  display: none !important;
+}
+
+.turn-more-menu {
+  display: contents;
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .turn-owner-banner {
+    top: 6.25rem;
+    min-width: 8.6rem;
+    max-width: calc(100% - 8.5rem);
+    padding: 0.38rem 0.68rem;
+  }
+
+  .turn-owner-banner strong {
+    font-size: 0.7rem;
+  }
+
+  .active-tool-rail {
+    display: none !important;
+  }
+
+  .active-hand-dock .hand-tray-header > div:last-child,
+  .active-hand-dock .turn-controls,
+  .active-hand-dock .turn-controls:not(:has(.take-card-action)) {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .turn-controls > .play-card-action,
+  .turn-controls > .mobile-chat-action,
+  .turn-controls > .mobile-more-action {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 3.05rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.32rem !important;
+    padding: 0.5rem 0.32rem !important;
+    font-size: clamp(0.65rem, 3.05vw, 0.78rem) !important;
+    white-space: nowrap;
+  }
+
+  .active-hand-dock .hand-tray-header > .turn-controls > .mobile-more-action:last-child {
+    display: inline-flex !important;
+  }
+
+  .turn-controls > .play-card-action { grid-column: 1 !important; }
+  .turn-controls > .mobile-chat-action { grid-column: 2 !important; }
+  .turn-controls > .mobile-more-action { grid-column: 3 !important; }
+
+  .mobile-dock-action-active {
+    border-color: rgba(94, 234, 212, 0.55) !important;
+    background: rgba(13, 107, 82, 0.92) !important;
+    color: #ecfdf5 !important;
+  }
+
+  .turn-more-menu {
+    position: absolute;
+    right: 0.25rem;
+    bottom: calc(100% + 0.5rem);
+    z-index: 96;
+    display: grid;
+    width: min(14.5rem, calc(100vw - 1.4rem));
+    gap: 0.38rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 1rem;
+    background: rgba(3, 13, 17, 0.96);
+    padding: 0.55rem;
+    box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.46), inset 0 1px rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(18px) saturate(1.1);
+  }
+
+  .turn-more-menu .mobile-turn-context {
+    display: grid !important;
+    gap: 0.08rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.35rem 0.5rem;
+    color: #f8fafc;
+    text-align: left;
+  }
+
+  .mobile-turn-context small {
+    color: #5eead4;
+    font-size: 0.52rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .mobile-turn-context strong {
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .turn-more-menu .take-card-action,
+  .turn-more-menu .sort-card-action,
+  .turn-more-menu .auto-play-action,
+  .turn-more-menu .quit-action {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 2.7rem !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.55rem !important;
+    padding: 0.55rem 0.7rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .turn-more-menu .take-action-full {
+    display: inline !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .turn-more-menu .take-action-compact {
+    display: none !important;
+  }
+
+  .turn-more-menu .quit-action {
+    color: #fecaca !important;
+  }
+}

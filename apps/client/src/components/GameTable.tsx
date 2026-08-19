@@ -22,6 +22,7 @@ import {
   Import,
   LogOut,
   MessageCircle,
+  MoreHorizontal,
   Play,
   Plus,
   RotateCcw,
@@ -474,6 +475,11 @@ export function GameTable() {
               <TableAmbience />
               <WeatherAmbience theme={weatherTheme} />
               <ReactionBurst state={state} />
+              <TurnOwnerBanner
+                activePlayerName={activePlayer?.username}
+                isViewerTurn={isMyTurn}
+                isDealPhase={isDealPhase}
+              />
 
               <div className="relative z-10 flex h-full min-h-[inherit] min-w-0 flex-col gap-3">
                 <TableStatusBar
@@ -564,6 +570,8 @@ export function GameTable() {
                       ? { name: nextCardTakeTarget.username, cardCount: nextCardTakeTarget.handCount }
                       : undefined}
                     onPlay={playSelected}
+                    onChat={() => setActiveTableTool((current) => current === "chat" ? "none" : "chat")}
+                    chatOpen={activeTableTool === "chat"}
                     onTake={() => setTakeCardsOpen(true)}
                     onSort={cycleHandSort}
                     onAutoPlay={() => setAutoPlay(true)}
@@ -1541,6 +1549,34 @@ function TablePhraseOverlay({
   );
 }
 
+function TurnOwnerBanner({
+  activePlayerName,
+  isViewerTurn,
+  isDealPhase
+}: {
+  activePlayerName?: string;
+  isViewerTurn: boolean;
+  isDealPhase: boolean;
+}) {
+  const playerLabel = isDealPhase
+    ? "Cards are being dealt"
+    : isViewerTurn
+      ? "Your turn"
+      : activePlayerName
+        ? `${activePlayerName} to play`
+        : "Waiting for next turn";
+
+  return (
+    <div className={clsx("turn-owner-banner", isViewerTurn && !isDealPhase && "turn-owner-banner-yours")} aria-live="polite">
+      <span className="turn-owner-pulse" aria-hidden="true" />
+      <span>
+        <small>{isDealPhase ? "Opening hand" : "Current turn"}</small>
+        <strong>{playerLabel}</strong>
+      </span>
+    </div>
+  );
+}
+
 function TurnTimerBadge({
   state,
   activePlayerName
@@ -1656,6 +1692,8 @@ interface TurnControlsProps {
   sortMode: HandSortMode;
   takeTarget?: { name: string; cardCount: number };
   onPlay: () => void;
+  onChat: () => void;
+  chatOpen: boolean;
   onTake: () => void;
   onSort: () => void;
   onAutoPlay: () => void;
@@ -1671,11 +1709,14 @@ function TurnControls({
   sortMode,
   takeTarget,
   onPlay,
+  onChat,
+  chatOpen,
   onTake,
   onSort,
   onAutoPlay,
   onQuit
 }: TurnControlsProps) {
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const hint = !isMyTurn
     ? "Waiting"
     : openingLeadRequired
@@ -1685,38 +1726,92 @@ function TurnControls({
       : "Lead any card";
 
   return (
-    <div className="turn-controls flex flex-wrap items-center justify-end gap-1.5">
+    <div className="turn-controls relative flex flex-wrap items-center justify-end gap-1.5">
       <span className="turn-hint rounded-full bg-slate-950/5 px-2.5 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-600 dark:bg-white/10 dark:text-slate-300">
         {hint} / {legalCount} legal
       </span>
-      {takeTarget ? (
-        <button
-          className="take-card-action secondary-button border-amber-300/35 bg-amber-300/10 px-3 py-2 text-amber-100"
-          onClick={onTake}
-          title={"Take all " + takeTarget.cardCount + " cards from " + takeTarget.name}
-        >
-          <span className="take-card-icon" aria-hidden="true"><Import size={16} /></span>
-          <span className="take-action-full">Take {takeTarget.name}'s {takeTarget.cardCount}</span>
-          <span className="take-action-compact">Take {takeTarget.cardCount}</span>
-        </button>
-      ) : null}
       <button className="play-card-action primary-button px-4 py-2" disabled={!canPlaySelected} onClick={onPlay}>
         <Sparkles size={17} />
         Play Card
       </button>
-      <button className="sort-card-action secondary-button px-3 py-2" onClick={onSort}>
-        <RotateCcw size={16} />
-        Sort
-        {sortMode === "deal" ? null : <span className="sort-mode-label">{sortMode}</span>}
+      <button
+        type="button"
+        className={clsx("mobile-chat-action secondary-button", chatOpen && "mobile-dock-action-active")}
+        onClick={() => {
+          setMobileActionsOpen(false);
+          onChat();
+        }}
+        aria-label="Open table chat"
+        aria-expanded={chatOpen}
+      >
+        <MessageCircle size={17} />
+        Chat
       </button>
-      <button className="auto-play-action secondary-button px-3 py-2" onClick={onAutoPlay} title="Let the server play this seat until you return">
-        <Bot size={16} />
-        Auto Play
+      <button
+        type="button"
+        className={clsx("mobile-more-action secondary-button", mobileActionsOpen && "mobile-dock-action-active")}
+        onClick={() => setMobileActionsOpen((current) => !current)}
+        aria-label="Show more game actions"
+        aria-expanded={mobileActionsOpen}
+        aria-controls={mobileActionsOpen ? "mobile-turn-more-menu" : undefined}
+      >
+        <MoreHorizontal size={19} />
+        More
       </button>
-      <button className="quit-action secondary-button px-3 py-2" onClick={onQuit}>
-        <LogOut size={16} />
-        Quit
-      </button>
+
+      <AnimatePresence>
+        {mobileActionsOpen || typeof window === "undefined" || window.innerWidth > 767 ? (
+          <motion.div
+            id="mobile-turn-more-menu"
+            className="turn-more-menu"
+            initial={mobileActionsOpen ? { opacity: 0, y: 10, scale: 0.96 } : false}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+          >
+            <span className="mobile-turn-context">
+              <small>{isMyTurn ? "Your move" : "Table status"}</small>
+              <strong>{hint} / {legalCount} legal</strong>
+            </span>
+            {takeTarget ? (
+              <button
+                className="take-card-action secondary-button border-amber-300/35 bg-amber-300/10 px-3 py-2 text-amber-100"
+                onClick={() => {
+                  setMobileActionsOpen(false);
+                  onTake();
+                }}
+                title={"Take all " + takeTarget.cardCount + " cards from " + takeTarget.name}
+              >
+                <span className="take-card-icon" aria-hidden="true"><Import size={16} /></span>
+                <span className="take-action-full">Take {takeTarget.name}'s {takeTarget.cardCount}</span>
+                <span className="take-action-compact">Take {takeTarget.cardCount}</span>
+              </button>
+            ) : null}
+            <button className="sort-card-action secondary-button px-3 py-2" onClick={() => {
+              setMobileActionsOpen(false);
+              onSort();
+            }}>
+              <RotateCcw size={16} />
+              Sort
+              {sortMode === "deal" ? null : <span className="sort-mode-label">{sortMode}</span>}
+            </button>
+            <button className="auto-play-action secondary-button px-3 py-2" onClick={() => {
+              setMobileActionsOpen(false);
+              onAutoPlay();
+            }} title="Let the server play this seat until you return">
+              <Bot size={16} />
+              Auto Play
+            </button>
+            <button className="quit-action secondary-button px-3 py-2" onClick={() => {
+              setMobileActionsOpen(false);
+              onQuit();
+            }}>
+              <LogOut size={16} />
+              Quit
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
