@@ -98,6 +98,7 @@ interface GameStore {
   lastMatchResult?: ShareableMatchResult;
   matchRematchContext?: MatchRematchContext;
   matchResultOpen: boolean;
+  matchResultPending: boolean;
   rooms: RoomListItem[];
   error?: string;
   theme: ThemeMode;
@@ -218,6 +219,7 @@ export const useGameStore = create<GameStore>()(
           lastMatchResult: undefined,
           matchRematchContext: undefined,
           matchResultOpen: false,
+          matchResultPending: false,
           screen: "room",
           error: undefined
         });
@@ -430,6 +432,7 @@ export const useGameStore = create<GameStore>()(
         accountType: "guest",
         rooms: [],
         matchResultOpen: false,
+        matchResultPending: false,
         theme: initialTheme,
         muted: false,
         musicEnabled: true,
@@ -533,12 +536,18 @@ export const useGameStore = create<GameStore>()(
           playSound("click", get().muted);
         },
         captureMatchResult: (lastMatchResult, matchRematchContext) => {
-          set({ lastMatchResult, matchRematchContext, matchResultOpen: false });
+          const isNewResult = get().lastMatchResult?.publicMatchId !== lastMatchResult.publicMatchId;
+          set({
+            lastMatchResult,
+            matchRematchContext,
+            matchResultOpen: false,
+            matchResultPending: isNewResult
+          });
         },
         openMatchResult: () => {
-          if (get().lastMatchResult) set({ matchResultOpen: true });
+          if (get().lastMatchResult) set({ matchResultOpen: true, matchResultPending: false });
         },
-        closeMatchResult: () => set({ matchResultOpen: false }),
+        closeMatchResult: () => set({ matchResultOpen: false, matchResultPending: false }),
         rematchLastGame: () => {
           const rematch = get().matchRematchContext;
           if (!rematch) {
@@ -815,8 +824,13 @@ export const useGameStore = create<GameStore>()(
         tableLayout: state.tableLayout,
         weatherTheme: state.weatherTheme,
         lastMatchResult: state.lastMatchResult,
-        matchRematchContext: state.matchRematchContext,
-        matchResultOpen: state.matchResultOpen
+        matchRematchContext: state.matchRematchContext
+      }),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState as Partial<GameStore>),
+        matchResultOpen: false,
+        matchResultPending: false
       })
     }
   )

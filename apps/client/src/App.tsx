@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { GameTable } from "./components/GameTable.js";
 import { HomeScreen } from "./components/HomeScreen.js";
 import { TournamentsPage } from "./components/engagement/TournamentsPage.js";
@@ -25,6 +25,7 @@ export function App() {
   const lastMatchResult = useGameStore((store) => store.lastMatchResult);
   const matchRematchContext = useGameStore((store) => store.matchRematchContext);
   const matchResultOpen = useGameStore((store) => store.matchResultOpen);
+  const matchResultPending = useGameStore((store) => store.matchResultPending);
   const openMatchResult = useGameStore((store) => store.openMatchResult);
   const closeMatchResult = useGameStore((store) => store.closeMatchResult);
   const rematchLastGame = useGameStore((store) => store.rematchLastGame);
@@ -34,7 +35,6 @@ export function App() {
   const guest = useAuthStore((store) => store.guest);
   const profile = useAuthStore((store) => store.profile);
   const idToken = useAuthStore((store) => store.idToken);
-  const autoOpenedResultRef = useRef<string | undefined>(undefined);
 
   const initialRoomCode = useMemo(() => {
     if (typeof window === "undefined") {
@@ -77,15 +77,10 @@ export function App() {
   }, [authStatus, connect, guest, idToken, profile, setCardStyle, setMusicEnabled, setMuted, setTableTheme, syncIdentity]);
 
   useEffect(() => {
-    if (
-      screen === "home"
-      && lastMatchResult
-      && autoOpenedResultRef.current !== lastMatchResult.publicMatchId
-    ) {
-      autoOpenedResultRef.current = lastMatchResult.publicMatchId;
+    if (screen === "home" && lastMatchResult && matchResultPending) {
       openMatchResult();
     }
-  }, [lastMatchResult, openMatchResult, screen]);
+  }, [lastMatchResult, matchResultPending, openMatchResult, screen]);
 
   return (
     <>

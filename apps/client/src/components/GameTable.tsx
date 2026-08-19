@@ -72,6 +72,7 @@ export function GameTable() {
   const nextRound = useGameStore((store) => store.nextRound);
   const captureMatchResult = useGameStore((store) => store.captureMatchResult);
   const openMatchResult = useGameStore((store) => store.openMatchResult);
+  const matchResultPending = useGameStore((store) => store.matchResultPending);
   const playCards = useGameStore((store) => store.playCards);
   const takeNextPlayerCards = useGameStore((store) => store.takeNextPlayerCards);
   const updateRoomSettings = useGameStore((store) => store.updateRoomSettings);
@@ -157,7 +158,7 @@ export function GameTable() {
 
   useEffect(() => {
     const resultId = shareableMatchResult?.publicMatchId;
-    if (!resultId || openedMatchResultRef.current === resultId) return undefined;
+    if (!resultId || !matchResultPending || openedMatchResultRef.current === resultId) return undefined;
     const celebrationDelay = state?.winCelebration
       ? Math.max(350, state.winCelebration.endsAt - Date.now() + 250)
       : 500;
@@ -166,7 +167,7 @@ export function GameTable() {
       openMatchResult();
     }, celebrationDelay);
     return () => window.clearTimeout(timeout);
-  }, [openMatchResult, shareableMatchResult?.publicMatchId, state?.winCelebration?.endsAt]);
+  }, [matchResultPending, openMatchResult, shareableMatchResult?.publicMatchId, state?.winCelebration?.endsAt]);
 
   useEffect(() => {
     setSelectedIds([]);
