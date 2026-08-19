@@ -16430,13 +16430,22 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
 
 /* Reserve a clear lane for the local player between the hand and action controls. */
 @media (min-width: 768px) {
-  .play-table-shell .casino-seat-you {
-    bottom: clamp(1.15rem, 2.8vh, 1.8rem) !important;
+  .play-table-shell .casino-seat-layer .casino-seat-you {
+    bottom: clamp(1.1rem, 2.2vh, 1.5rem) !important;
+  }
+
+  .play-table-shell .casino-seat-layer .casino-seat-you .seat-identity {
+    gap: 0.12rem !important;
+  }
+
+  .play-table-shell .casino-seat-layer .casino-seat-you .seat-avatar-token {
+    width: clamp(3rem, 3.55vw, 3.65rem) !important;
+    height: clamp(3rem, 3.55vw, 3.65rem) !important;
   }
 }
 
 @media (max-width: 767px) {
-  .play-table-shell .casino-seat-you {
+  .play-table-shell .casino-seat-layer .casino-seat-you {
     bottom: calc(var(--mobile-hand-zone-height, 14rem) - 1.75rem) !important;
   }
 
