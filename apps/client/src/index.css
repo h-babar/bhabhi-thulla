@@ -16427,3 +16427,27 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   background-repeat: no-repeat !important;
   background-size: 100% 100% !important;
 }
+
+/* Reserve a clear lane for the local player between the hand and action controls. */
+@media (min-width: 768px) {
+  .play-table-shell .casino-seat-you {
+    bottom: clamp(1.15rem, 2.8vh, 1.8rem) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .play-table-shell .casino-seat-you {
+    bottom: calc(var(--mobile-hand-zone-height, 14rem) - 1.75rem) !important;
+  }
+
+  .active-chat-button {
+    display: inline-flex !important;
+    width: 3rem !important;
+    min-width: 3rem !important;
+    min-height: 3rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    padding: 0 !important;
+  }
+}

@@ -12,13 +12,11 @@ import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import {
-  BarChart3,
   BookOpen,
   Bot,
   Copy,
   Crown,
   Eye,
-  Ellipsis,
   Hand,
   Home,
   Import,
@@ -35,7 +33,7 @@ import {
   WifiOff,
   X
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { stopBackgroundMusic, updateBackgroundMusic, type MusicPhase } from "../lib/music.js";
 import { buildShareableMatchResult } from "../lib/matchResults.js";
 import { playerInitials } from "../lib/playerInitials.js";
@@ -55,7 +53,7 @@ import { PlayerVoiceControl } from "../voice/PlayerVoiceControl.js";
 import { VoiceControls } from "../voice/VoiceControls.js";
 import { useVoiceChat } from "../voice/VoiceChatProvider.js";
 
-type ActiveTableTool = "none" | "odds" | "score" | "chat";
+type ActiveTableTool = "none" | "chat";
 type HandSortMode = "deal" | "suit" | "rank";
 
 export function GameTable() {
@@ -1142,13 +1140,7 @@ function ActiveTableTools({
   state: PublicGameState;
 }) {
   const [seenChatCount, setSeenChatCount] = useState(state.chatMessages.length);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const unreadChatCount = Math.max(0, state.chatMessages.length - seenChatCount);
-  const tools: Array<{ key: Exclude<ActiveTableTool, "none">; label: string; icon: ReactNode }> = [
-    { key: "odds", label: "Odds", icon: <BarChart3 size={17} /> },
-    { key: "score", label: "Score", icon: <Trophy size={17} /> },
-    { key: "chat", label: "Chat", icon: <MessageCircle size={17} /> }
-  ];
   const close = () => onChange("none");
 
   useEffect(() => {
@@ -1156,12 +1148,6 @@ function ActiveTableTools({
       setSeenChatCount(state.chatMessages.length);
     }
   }, [activeTool, state.chatMessages.length]);
-
-  useEffect(() => {
-    if (activeTool !== "none") {
-      setMobileMenuOpen(false);
-    }
-  }, [activeTool]);
 
   if (typeof document === "undefined") {
     return null;
@@ -1172,47 +1158,20 @@ function ActiveTableTools({
       <div className="active-tool-rail pointer-events-auto" onPointerDown={(event) => event.stopPropagation()}>
         <button
           type="button"
-          className={clsx("active-tool-button mobile-tool-trigger", mobileMenuOpen && "active-tool-button-active")}
-          onClick={() => setMobileMenuOpen((open) => !open)}
-          aria-label="Open match tools"
-          aria-expanded={mobileMenuOpen}
-          aria-controls="mobile-table-tools"
+          className={clsx("active-tool-button active-chat-button", activeTool === "chat" && "active-tool-button-active")}
+          onClick={() => onChange(activeTool === "chat" ? "none" : "chat")}
+          aria-label="Open Chat"
+          aria-expanded={activeTool === "chat"}
+          aria-controls={activeTool === "chat" ? "active-table-panel" : undefined}
         >
-          <Ellipsis size={20} />
-          <span>More</span>
+          <MessageCircle size={18} />
+          <span>Chat</span>
           {unreadChatCount > 0 ? (
             <b className="active-tool-unread" aria-label={`${unreadChatCount} unread messages`}>
               {Math.min(99, unreadChatCount)}
             </b>
           ) : null}
         </button>
-        <div
-          id="mobile-table-tools"
-          className={clsx("active-tool-options", mobileMenuOpen && "active-tool-options-open")}
-        >
-          {tools.map((tool) => (
-            <button
-              key={tool.key}
-              type="button"
-              className={clsx("active-tool-button", activeTool === tool.key && "active-tool-button-active")}
-              onClick={() => {
-                onChange(activeTool === tool.key ? "none" : tool.key);
-                setMobileMenuOpen(false);
-              }}
-              aria-label={`Open ${tool.label}`}
-              aria-expanded={activeTool === tool.key}
-              aria-controls={activeTool === tool.key ? "active-table-panel" : undefined}
-            >
-              {tool.icon}
-              <span>{tool.label}</span>
-              {tool.key === "chat" && unreadChatCount > 0 ? (
-                <b className="active-tool-unread" aria-label={`${unreadChatCount} unread messages`}>
-                  {Math.min(99, unreadChatCount)}
-                </b>
-              ) : null}
-            </button>
-          ))}
-        </div>
       </div>
 
       <AnimatePresence>
@@ -1233,8 +1192,6 @@ function ActiveTableTools({
             <button type="button" className="active-tool-close" onClick={close} aria-label="Close table panel">
               <X size={16} />
             </button>
-            {activeTool === "odds" ? <WinProbabilityPanel state={state} /> : null}
-            {activeTool === "score" ? <ScoreBoard state={state} /> : null}
             {activeTool === "chat" ? <ChatPanel live /> : null}
           </motion.aside>
         ) : null}
