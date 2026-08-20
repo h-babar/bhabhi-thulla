@@ -51,18 +51,6 @@ function drawBackground(context: CanvasRenderingContext2D): void {
   context.fillStyle = glow;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  context.save();
-  context.globalAlpha = 0.09;
-  context.strokeStyle = "#f3cf6b";
-  context.lineWidth = 1;
-  for (let x = -HEIGHT; x < WIDTH + HEIGHT; x += 52) {
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x + HEIGHT, HEIGHT);
-    context.stroke();
-  }
-  context.restore();
-
   roundedRect(context, 44, 44, WIDTH - 88, HEIGHT - 88, 54);
   context.strokeStyle = "rgba(244, 205, 105, 0.55)";
   context.lineWidth = 3;

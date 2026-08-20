@@ -316,12 +316,9 @@ export const useGameStore = create<GameStore>()(
           });
 
           socket.on("connect_error", () => {
-            set((current) => ({
-              socketStatus: "offline",
-              error: current.matchLaunch
-                ? undefined
-                : `Could not reach the game server at ${API_URL}.`
-            }));
+            // Socket.IO retries automatically. A single failed attempt is common
+            // while the hosted server wakes and should not surface as a game error.
+            set({ socketStatus: "offline" });
           });
 
           socket.on("room:state", (state) => {

@@ -13986,14 +13986,6 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 22px 55px rgba(0, 0, 0, 0.25);
 }
 
-.match-result-card::after {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(45deg, transparent 0 28px, rgba(255, 255, 255, 0.018) 29px 30px);
-  content: "";
-  pointer-events: none;
-}
-
 .match-result-card-heading,
 .match-result-player,
 .match-result-caption,
@@ -17566,6 +17558,71 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
 @media (max-width: 980px) {
   .home-arena-flow {
     display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .home-arena-flow {
+    right: 0.85rem;
+    bottom: 4.75rem;
+    left: 0.85rem;
+    display: block;
+    max-width: none;
+    border-color: rgba(230, 195, 105, 0.25);
+    border-radius: 0.65rem;
+    padding: 0.55rem 0.6rem 0.6rem;
+    background:
+      radial-gradient(circle at 0 50%, rgba(47, 216, 148, 0.17), transparent 44%),
+      linear-gradient(145deg, rgba(6, 23, 16, 0.94), rgba(3, 10, 7, 0.92));
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.07),
+      0 0.8rem 1.8rem rgba(0, 0, 0, 0.34);
+  }
+
+  .home-arena-flow-heading {
+    gap: 0.5rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .home-arena-flow-heading > span {
+    font-size: 0.52rem;
+  }
+
+  .home-arena-flow-heading > em {
+    font-size: 0.5rem;
+  }
+
+  .home-arena-flow-steps {
+    gap: 0.22rem;
+    padding-top: 0.46rem;
+  }
+
+  .home-arena-flow-steps > span {
+    column-gap: 0.32rem;
+  }
+
+  .home-arena-flow-steps > span > i {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .home-arena-flow-steps > span > i svg {
+    width: 0.72rem;
+    height: 0.72rem;
+  }
+
+  .home-arena-flow-steps small {
+    font-size: 0.4rem;
+    letter-spacing: 0.07em;
+  }
+
+  .home-arena-flow-steps strong {
+    font-size: 0.56rem;
+  }
+
+  .home-arena-flow-steps > b svg {
+    width: 0.65rem;
+    height: 0.65rem;
   }
 }
 
