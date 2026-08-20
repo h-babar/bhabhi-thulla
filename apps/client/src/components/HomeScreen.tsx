@@ -20,10 +20,10 @@ import {
   LockKeyhole,
   LogIn,
   Medal,
-  Play,
   Plus,
   Search,
   Share2,
+  Spade,
   Settings,
   Shield,
   Swords,
@@ -234,14 +234,14 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
                   className="home-mode-card is-primary"
                   onClick={() => quickPlay("normal", { targetScore: 1, turnSeconds, funMode })}
                 >
-                  <span className="home-mode-icon"><Play size={22} fill="currentColor" /></span>
+                  <span className="home-mode-icon"><Spade size={23} fill="currentColor" /></span>
                   <span>
                     <small>Quick match</small>
                     <strong>Play Online</strong>
                   </span>
                   <ChevronRight size={20} />
                 </button>
-                <button className="home-mode-card" onClick={openTournaments}>
+                <button className="home-mode-card is-tournament" onClick={openTournaments}>
                   <span className="home-mode-icon"><Trophy size={21} /></span>
                   <span>
                     <small>Ranked circuit</small>
@@ -249,7 +249,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
                   </span>
                   <ChevronRight size={20} />
                 </button>
-                <button className="home-mode-card is-compact" onClick={() => setPracticeOpen(true)}>
+                <button className="home-mode-card is-compact is-practice" onClick={() => setPracticeOpen(true)}>
                   <span className="home-mode-icon"><GraduationCap size={20} /></span>
                   <span>
                     <small>Learn the table</small>
@@ -262,6 +262,33 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
               <div className="home-arena-meta">
                 <span><Shield size={15} /> Server-validated play</span>
                 <span><Users size={15} /> {roomCountLabel}</span>
+              </div>
+
+            </div>
+
+            <div className="home-arena-flow" aria-label="How a Bhabhi Thulla hand flows">
+              <div className="home-arena-flow-heading">
+                <span><Swords size={15} /> Table flow</span>
+                <em><i /> Ready for a hand</em>
+              </div>
+              <div className="home-arena-flow-steps">
+                <span>
+                  <i><Spade size={15} fill="currentColor" /></i>
+                  <small>Opening</small>
+                  <strong>A♠ starts</strong>
+                </span>
+                <b><ChevronRight size={14} /></b>
+                <span>
+                  <i><Shield size={15} /></i>
+                  <small>Play clean</small>
+                  <strong>Follow suit</strong>
+                </span>
+                <b><ChevronRight size={14} /></b>
+                <span>
+                  <i><Trophy size={15} /></i>
+                  <small>Goal</small>
+                  <strong>Escape first</strong>
+                </span>
               </div>
             </div>
 
@@ -415,7 +442,12 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
           eyebrow="Today's Challenge"
           title={todayChallenge.title}
           body={todayChallenge.reward}
-          action="View Challenge"
+          action="Daily mission"
+          cta="View Challenge"
+          tone="challenge"
+          progress={todayChallenge.progress}
+          goal={todayChallenge.goal}
+          progressLabel={`${todayChallenge.progress} / ${todayChallenge.goal}`}
           onClick={openTournaments}
         />
         <HomeEngagementCard
@@ -423,7 +455,12 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
           eyebrow="Next Tournament"
           title={nextTournament.name}
           body={`${nextTournament.players}/${nextTournament.maxPlayers} players - ${nextTournament.reward}`}
-          action="Open Events"
+          action="Open entry"
+          cta="View Details"
+          tone="tournament"
+          progress={nextTournament.players}
+          goal={nextTournament.maxPlayers}
+          progressLabel={`${nextTournament.players} / ${nextTournament.maxPlayers} players`}
           onClick={openTournaments}
           footer={<CountdownTimer targetTime={nextTournament.startTime} label="Starts" compact />}
         />
@@ -432,7 +469,12 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
           eyebrow="Weekly Event"
           title={engagementData.weeklyEvent.title}
           body={`${engagementData.weeklyEvent.seasonPoints.toLocaleString()} season points earned`}
-          action="See Missions"
+          action="Season live"
+          cta="See Missions"
+          tone="weekly"
+          progress={engagementData.weeklyEvent.seasonPoints}
+          goal={engagementData.weeklyEvent.rewardChest.goal}
+          progressLabel={`${engagementData.weeklyEvent.seasonPoints.toLocaleString()} / ${engagementData.weeklyEvent.rewardChest.goal.toLocaleString()} SP`}
           onClick={openTournaments}
         />
         <HomeEngagementCard
@@ -440,7 +482,10 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
           eyebrow="Current Rank"
           title={`#${currentRank} Weekly`}
           body="Climb with wins, missions, and tournament entries."
-          action="Leaderboards"
+          action="Leaderboard"
+          cta="View Leaderboard"
+          tone="rank"
+          rankLabel={`#${currentRank}`}
           onClick={openTournaments}
         />
       </section>
@@ -530,7 +575,13 @@ function HomeEngagementCard({
   title,
   body,
   action,
+  cta,
   footer,
+  tone = "challenge",
+  progress,
+  goal,
+  progressLabel,
+  rankLabel,
   onClick
 }: {
   icon: ReactNode;
@@ -538,29 +589,49 @@ function HomeEngagementCard({
   title: string;
   body: string;
   action: string;
+  cta: string;
   footer?: ReactNode;
+  tone?: "challenge" | "tournament" | "weekly" | "rank";
+  progress?: number;
+  goal?: number;
+  progressLabel?: string;
+  rankLabel?: string;
   onClick: () => void;
 }) {
+  const progressPercent = progress !== undefined && goal
+    ? Math.min(100, Math.max(0, (progress / goal) * 100))
+    : undefined;
+
   return (
     <motion.button
       type="button"
-      className="home-event-card group overflow-hidden rounded-[1.5rem] border border-white/40 bg-slate-950/85 p-4 text-left text-white shadow-card backdrop-blur transition"
+      className={`home-event-card home-event-card-${tone} group overflow-hidden rounded-[1.5rem] border border-white/40 bg-slate-950/85 p-4 text-left text-white shadow-card backdrop-blur transition`}
       whileHover={{ y: -4, scale: 1.01 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
       onClick={onClick}
     >
-      <div className="relative z-10 flex items-start justify-between gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-200 text-slate-950 shadow-[0_0_26px_rgba(250,204,21,0.24)]">
+      <div className="home-event-top relative z-10 flex items-start justify-between gap-3">
+        <div className="home-event-icon grid h-11 w-11 place-items-center rounded-2xl bg-amber-200 text-slate-950 shadow-[0_0_26px_rgba(250,204,21,0.24)]">
           {icon}
         </div>
-        <span className="rounded-full bg-white/10 px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-[0.16em] text-teal-100">
+        <span className="home-event-badge rounded-full bg-white/10 px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-[0.16em] text-teal-100">
           {action}
         </span>
       </div>
-      <p className="relative z-10 mt-4 text-xs font-black uppercase tracking-[0.2em] text-amber-100">{eyebrow}</p>
-      <h3 className="relative z-10 mt-1 text-xl font-black">{title}</h3>
-      <p className="relative z-10 mt-2 text-sm font-semibold leading-6 text-white/62">{body}</p>
-      {footer ? <div className="relative z-10 mt-3">{footer}</div> : null}
+      <p className="home-event-eyebrow relative z-10 mt-4 text-xs font-black uppercase tracking-[0.2em] text-amber-100">{eyebrow}</p>
+      <h3 className="home-event-title relative z-10 mt-1 text-xl font-black">{title}</h3>
+      <p className="home-event-body relative z-10 mt-2 text-sm font-semibold leading-6 text-white/62">{body}</p>
+      {progressPercent !== undefined ? (
+        <div className="home-event-progress relative z-10">
+          <span><em>{progressLabel}</em><strong>{Math.round(progressPercent)}%</strong></span>
+          <div><i style={{ width: `${progressPercent}%` }} /></div>
+        </div>
+      ) : null}
+      {rankLabel ? <span className="home-event-rank-medal relative z-10">{rankLabel}</span> : null}
+      {footer ? <div className="home-event-footer relative z-10 mt-3">{footer}</div> : null}
+      <span className="home-event-cta relative z-10">
+        {cta}<ChevronRight size={15} />
+      </span>
     </motion.button>
   );
 }

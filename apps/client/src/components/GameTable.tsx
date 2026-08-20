@@ -435,7 +435,7 @@ export function GameTable() {
         <div className="flex flex-wrap items-center gap-2">
           <VoiceControls />
           <FriendsButton compact />
-          <button className="secondary-button" onClick={() => setRulesOpen(true)}>
+          <button className="secondary-button match-rules-button" onClick={() => setRulesOpen(true)}>
             <BookOpen size={17} />
             Rules
           </button>
