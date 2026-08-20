@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { GameTable } from "./components/GameTable.js";
 import { HomeScreen } from "./components/HomeScreen.js";
+import { MatchLaunchOverlay } from "./components/MatchLaunchOverlay.js";
 import { TournamentsPage } from "./components/engagement/TournamentsPage.js";
 import { MatchResultModal } from "./components/results/MatchResultModal.js";
 import { installMusicUnlock } from "./lib/music.js";
@@ -113,6 +114,8 @@ export function App() {
         }}
         primaryActionLabel={matchRematchContext?.continueTournamentStage ? "Next Stage" : "Rematch"}
       />
+
+      <MatchLaunchOverlay />
 
       <AnimatePresence>
         {error ? (

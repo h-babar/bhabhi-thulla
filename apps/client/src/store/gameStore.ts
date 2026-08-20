@@ -63,6 +63,20 @@ export type TableLayout = "grand" | "stadium" | "classic" | "compact" | "lounge"
 export type WeatherTheme = "sunny" | "night" | "rain" | "winter" | "festival" | "mist" | "embers";
 type Screen = "home" | "room" | "tournaments";
 type SocketStatus = "offline" | "connecting" | "online";
+export type MatchLaunchKind =
+  | "create"
+  | "join"
+  | "quick"
+  | "bots"
+  | "tournament"
+  | "start"
+  | "nextRound"
+  | "rejoin";
+
+export interface MatchLaunchState {
+  kind: MatchLaunchKind;
+  startedAt: number;
+}
 
 export interface TournamentLaunchOptions {
   eventId?: string;
@@ -83,6 +97,7 @@ export interface MatchRematchContext {
 
 interface GameStore {
   socketStatus: SocketStatus;
+  matchLaunch?: MatchLaunchState;
   screen: Screen;
   username: string;
   avatar: string;
@@ -185,8 +200,13 @@ export const useGameStore = create<GameStore>()(
           playerId: undefined,
           state: undefined,
           activeGame: undefined,
+          matchLaunch: undefined,
           error: message
         });
+      };
+
+      const beginMatchLaunch = (kind: MatchLaunchKind): void => {
+        set({ matchLaunch: { kind, startedAt: Date.now() }, error: undefined });
       };
 
       const isMissingRoomError = (message: string | undefined): boolean =>
@@ -206,7 +226,7 @@ export const useGameStore = create<GameStore>()(
             return;
           }
 
-          set({ error: response.error ?? "Unable to join room." });
+          set({ matchLaunch: undefined, error: response.error ?? "Unable to join room." });
           return;
         }
 
@@ -220,6 +240,7 @@ export const useGameStore = create<GameStore>()(
           matchRematchContext: undefined,
           matchResultOpen: false,
           matchResultPending: false,
+          matchLaunch: undefined,
           screen: "room",
           error: undefined
         });
@@ -295,10 +316,12 @@ export const useGameStore = create<GameStore>()(
           });
 
           socket.on("connect_error", () => {
-            set({
+            set((current) => ({
               socketStatus: "offline",
-              error: `Could not reach the game server at ${API_URL}.`
-            });
+              error: current.matchLaunch
+                ? undefined
+                : `Could not reach the game server at ${API_URL}.`
+            }));
           });
 
           socket.on("room:state", (state) => {
@@ -309,7 +332,12 @@ export const useGameStore = create<GameStore>()(
             const startedNewHand =
               state.status === "playing" &&
               (previous?.status !== "playing" || previous.round !== state.round);
-            set({ state, screen: "room", error: undefined });
+            set((current) => ({
+              state,
+              screen: "room",
+              error: undefined,
+              matchLaunch: state.status === "playing" ? undefined : current.matchLaunch
+            }));
             if (state.tournament?.eventId && state.tournament.offline) {
               useEngagementStore.getState().syncOfflineCup(state.tournament);
             }
@@ -322,7 +350,7 @@ export const useGameStore = create<GameStore>()(
           });
 
           socket.on("room:error", (message) => {
-            set({ error: message });
+            set({ matchLaunch: undefined, error: message });
           });
 
           socket.on("room:closed", (payload) => {
@@ -335,7 +363,7 @@ export const useGameStore = create<GameStore>()(
           });
 
           socket.on("gameError", (message) => {
-            set({ error: message });
+            set({ matchLaunch: undefined, error: message });
           });
 
           socket.on("privateHand", ({ roomCode, playerId, hand }) => {
@@ -418,10 +446,12 @@ export const useGameStore = create<GameStore>()(
       ): void => {
         const roomCode = get().roomCode;
         if (!roomCode) return;
+        beginMatchLaunch(event === "startGame" ? "start" : "nextRound");
         if (get().musicEnabled) primeBackgroundMusic();
-        ensureSocket().emit(event, { roomCode }, (response) =>
-          handleBasic(response, sound === "deal" ? "click" : sound)
-        );
+        ensureSocket().emit(event, { roomCode }, (response) => {
+          if (!response.ok) set({ matchLaunch: undefined });
+          handleBasic(response, sound === "deal" ? "click" : sound);
+        });
       };
 
       return {
@@ -442,7 +472,7 @@ export const useGameStore = create<GameStore>()(
         tableLayout: "compact",
         weatherTheme: "sunny",
         goHome: () => {
-          set({ screen: "home", error: undefined });
+          set({ screen: "home", matchLaunch: undefined, error: undefined });
         },
         resumeGame: () => {
           if (get().state && get().roomCode) {
@@ -579,6 +609,7 @@ export const useGameStore = create<GameStore>()(
           }
         },
         createRoom: (settings, visibility = "private") => {
+          beginMatchLaunch("create");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "createRoom",
@@ -591,6 +622,7 @@ export const useGameStore = create<GameStore>()(
           );
         },
         joinRoom: (roomCode, asSpectator = false) => {
+          beginMatchLaunch("join");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "joinRoom",
@@ -603,6 +635,7 @@ export const useGameStore = create<GameStore>()(
           );
         },
         quickPlay: (difficulty = "normal", settings) => {
+          beginMatchLaunch("quick");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "room:quickPlay",
@@ -615,6 +648,7 @@ export const useGameStore = create<GameStore>()(
           );
         },
         playWithBots: (difficulty, botCount, settings) => {
+          beginMatchLaunch("bots");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "room:playWithBots",
@@ -628,6 +662,7 @@ export const useGameStore = create<GameStore>()(
           );
         },
         startTournament: (nationCode, difficulty, options) => {
+          beginMatchLaunch("tournament");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "room:startTournament",
@@ -768,6 +803,7 @@ export const useGameStore = create<GameStore>()(
         },
         rejoinActiveGame: () => {
           if (get().accountType !== "registered" || !get().authToken) return;
+          beginMatchLaunch("rejoin");
           ensureSocket().emit("player:rejoinActive", profilePayload(), (response) => {
             handleJoinResponse(response);
           });
@@ -798,6 +834,7 @@ export const useGameStore = create<GameStore>()(
             roomCode: undefined,
             playerId: undefined,
             state: undefined,
+            matchLaunch: undefined,
             error: undefined
           });
         },

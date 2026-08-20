@@ -20,6 +20,7 @@ import {
   Hand,
   Home,
   Import,
+  LoaderCircle,
   LogOut,
   MessageCircle,
   MoreHorizontal,
@@ -68,6 +69,7 @@ export function GameTable() {
   const addBot = useGameStore((store) => store.addBot);
   const setReady = useGameStore((store) => store.setReady);
   const startGame = useGameStore((store) => store.startGame);
+  const matchLaunch = useGameStore((store) => store.matchLaunch);
   const nextRound = useGameStore((store) => store.nextRound);
   const captureMatchResult = useGameStore((store) => store.captureMatchResult);
   const openMatchResult = useGameStore((store) => store.openMatchResult);
@@ -458,6 +460,7 @@ export function GameTable() {
           playerId={playerId}
           setReady={setReady}
           startGame={startGame}
+          starting={matchLaunch?.kind === "start"}
           updateRoomSettings={updateRoomSettings}
         />
       ) : (
@@ -690,10 +693,11 @@ interface LobbyPanelProps {
   addBot: (difficulty: BotDifficulty) => void;
   setReady: (ready: boolean) => void;
   startGame: () => void;
+  starting: boolean;
   updateRoomSettings: (settings: Partial<PublicGameState["settings"]>) => void;
 }
 
-function LobbyPanel({ state, isHost, playerId, addBot, setReady, startGame, updateRoomSettings }: LobbyPanelProps) {
+function LobbyPanel({ state, isHost, playerId, addBot, setReady, startGame, starting, updateRoomSettings }: LobbyPanelProps) {
   const [difficulty, setDifficulty] = useState<BotDifficulty>(state.tournament?.difficulty ?? "normal");
   const activeTournamentStage = state.tournament?.stages[state.tournament.stageIndex];
   const startLabel = state.tournament
@@ -732,9 +736,9 @@ function LobbyPanel({ state, isHost, playerId, addBot, setReady, startGame, upda
               </button>
             ) : null}
             {isHost ? (
-              <button className="primary-button" onClick={startGame}>
-                <Play size={18} />
-                {startLabel}
+              <button className="primary-button" disabled={starting} onClick={startGame}>
+                {starting ? <LoaderCircle className="match-launch-spinner" size={18} /> : <Play size={18} />}
+                {starting ? "Starting..." : startLabel}
               </button>
             ) : (
               <p className="rounded-full bg-white/15 px-4 py-2 text-sm font-black">
