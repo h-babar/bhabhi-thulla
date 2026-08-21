@@ -21,7 +21,7 @@ export const CARD_RANKS = [
 export const DEFAULT_SETTINGS: GameSettings = {
   maxPlayers: 6,
   handSize: 0,
-  targetScore: 5,
+  targetScore: 1,
   turnSeconds: 20,
   allowSpectators: true,
   voiceEnabled: true,

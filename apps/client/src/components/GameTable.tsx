@@ -861,6 +861,30 @@ function LobbyPanel({ state, isHost, playerId, addBot, setReady, startGame, star
   );
 }
 
+type TableSeatPlacement =
+  | "bottom-center"
+  | "bottom-left"
+  | "bottom-right"
+  | "left-center"
+  | "right-center"
+  | "top-left"
+  | "top-center"
+  | "top-right";
+
+const TABLE_SEAT_PLACEMENTS: Record<number, readonly TableSeatPlacement[]> = {
+  1: ["bottom-center"],
+  2: ["bottom-center", "top-center"],
+  3: ["bottom-center", "top-left", "top-right"],
+  4: ["bottom-center", "left-center", "top-center", "right-center"],
+  5: ["bottom-center", "left-center", "top-left", "top-right", "right-center"],
+  6: ["bottom-left", "left-center", "top-left", "top-right", "right-center", "bottom-right"]
+};
+
+function getTableSeatPlacement(playerCount: number, seatIndex: number): TableSeatPlacement {
+  const seatCount = Math.min(6, Math.max(1, playerCount));
+  return TABLE_SEAT_PLACEMENTS[seatCount]?.[seatIndex] ?? "bottom-center";
+}
+
 function CasinoSeats({
   state,
   playerId
@@ -883,7 +907,12 @@ function CasinoSeats({
       {orderedPlayers.map((player, index) => (
         <motion.div
           key={player.id}
-          className={clsx("casino-seat", `casino-seat-${index}`, player.id === playerId && "casino-seat-you")}
+          className={clsx(
+            "casino-seat",
+            `casino-seat-${index}`,
+            `seat-placement-${getTableSeatPlacement(seatCount, index)}`,
+            player.id === playerId && "casino-seat-you"
+          )}
           initial={{ opacity: 0, y: index === 0 ? 22 : -12, scale: 0.94 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 260, damping: 22, delay: index * 0.04 }}
@@ -1379,6 +1408,10 @@ function TrickTable({
                     "center-play-slot grid justify-items-center",
                     `center-play-slot-${index}`,
                     `center-play-seat-${Math.max(0, orderedPlayerIds.indexOf(play.playerId))}`,
+                    `center-play-placement-${getTableSeatPlacement(
+                      state.players.length,
+                      Math.max(0, orderedPlayerIds.indexOf(play.playerId))
+                    )}`,
                     play.offSuit && "center-play-slot-thulla",
                     winningPlayKey === `${play.playerId}-${play.card.id}` && "center-play-slot-winning"
                   )}
@@ -1777,6 +1810,17 @@ function TurnControls({
               <small>{isMyTurn ? "Your move" : "Table status"}</small>
               <strong>{hint} / {legalCount} legal</strong>
             </span>
+            <button
+              className="mobile-menu-play-action primary-button"
+              disabled={!canPlaySelected}
+              onClick={() => {
+                setMobileActionsOpen(false);
+                onPlay();
+              }}
+            >
+              <Sparkles size={16} />
+              Play selected card
+            </button>
             {takeTarget ? (
               <button
                 className="take-card-action secondary-button border-amber-300/35 bg-amber-300/10 px-3 py-2 text-amber-100"

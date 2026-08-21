@@ -16756,6 +16756,394 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   }
 }
 
+/* Final five/six-player readability: visible bottom names, tighter tricks and controls. */
+@media (min-width: 768px) {
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) :is(
+    .seat-placement-bottom-left,
+    .seat-placement-bottom-center,
+    .seat-placement-bottom-right
+  ) .seat-identity {
+    z-index: 245 !important;
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    align-items: center !important;
+    gap: 0.12rem !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) :is(
+    .seat-placement-bottom-left,
+    .seat-placement-bottom-center,
+    .seat-placement-bottom-right
+  ) .seat-nameplate {
+    z-index: 246 !important;
+    min-width: 5.15rem !important;
+    max-width: 6.2rem !important;
+    padding: 0.22rem 0.48rem 0.26rem !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) :is(
+    .seat-placement-bottom-left,
+    .seat-placement-bottom-center,
+    .seat-placement-bottom-right
+  ) .seat-player-name {
+    max-width: 4.7rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) :is(
+    .seat-placement-bottom-left,
+    .seat-placement-bottom-center,
+    .seat-placement-bottom-right
+  ) .seat-player-status {
+    font-size: 0.54rem !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-left,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-left {
+    left: 38% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-right,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-right {
+    left: 62% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-bottom-left {
+    left: 44% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-bottom-right {
+    left: 56% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-left {
+    left: 38% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-right {
+    left: 62% !important;
+  }
+
+  .active-hand-dock .hand-tray-header > div:last-child,
+  .active-hand-dock .turn-controls {
+    gap: 0.32rem !important;
+  }
+
+  .active-hand-dock .hand-tray-header > div:last-child {
+    padding: 0.25rem !important;
+  }
+
+  .active-hand-dock .turn-controls > button,
+  .active-hand-dock .turn-controls > span {
+    min-height: 2.75rem !important;
+    padding: 0.42rem 0.82rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .active-hand-dock .turn-controls > .turn-hint {
+    padding-inline: 1rem !important;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-left,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-left {
+    left: 25% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-right,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-right {
+    left: 75% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-bottom-left {
+    left: 37% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-bottom-right {
+    left: 63% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-left {
+    left: 25% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-right {
+    left: 75% !important;
+  }
+}
+
+/* Count-aware seating: every avatar, opponent hand, and played card shares one map. */
+@media (min-width: 768px) {
+  .play-table-shell .casino-seat-layer.seat-count-3 .seat-placement-top-left {
+    left: 40% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-3 .seat-placement-top-right {
+    left: 60% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-top-left,
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-left {
+    left: 32% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-top-center,
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-center {
+    left: 50% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-top-right,
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-right {
+    left: 68% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-bottom-left {
+    left: 43% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-bottom-right {
+    left: 57% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-left {
+    left: 32% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-center {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-right {
+    left: 68% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .center-play-seat-count-2 .center-play-placement-top-center { left: 50% !important; top: 28% !important; }
+  .center-play-seat-count-2 .center-play-placement-bottom-center { left: 50% !important; top: 70% !important; }
+
+  .center-play-seat-count-3 .center-play-placement-top-left { left: 40% !important; top: 29% !important; }
+  .center-play-seat-count-3 .center-play-placement-top-right { left: 60% !important; top: 29% !important; }
+  .center-play-seat-count-3 .center-play-placement-bottom-center { left: 50% !important; top: 72% !important; }
+
+  .center-play-seat-count-5 .center-play-placement-top-left,
+  .center-play-seat-count-6 .center-play-placement-top-left { left: 32% !important; top: 28% !important; }
+  .center-play-seat-count-5 .center-play-placement-top-center,
+  .center-play-seat-count-6 .center-play-placement-top-center { left: 50% !important; top: 24% !important; }
+  .center-play-seat-count-5 .center-play-placement-top-right,
+  .center-play-seat-count-6 .center-play-placement-top-right { left: 68% !important; top: 28% !important; }
+  .center-play-seat-count-5 .center-play-placement-bottom-left { left: 42% !important; top: 72% !important; }
+  .center-play-seat-count-5 .center-play-placement-bottom-right { left: 58% !important; top: 72% !important; }
+  .center-play-seat-count-6 .center-play-placement-bottom-left { left: 32% !important; top: 72% !important; }
+  .center-play-seat-count-6 .center-play-placement-bottom-center { left: 50% !important; top: 76% !important; }
+  .center-play-seat-count-6 .center-play-placement-bottom-right { left: 68% !important; top: 72% !important; }
+}
+
+.play-table-shell .casino-seat-layer:is(
+  .seat-count-3,
+  .seat-count-5,
+  .seat-count-6
+) :is(
+  .seat-placement-top-left,
+  .seat-placement-top-center,
+  .seat-placement-top-right
+) .seat-card-stack {
+  position: absolute !important;
+  left: 50% !important;
+  right: auto !important;
+  top: calc(100% - 1.45rem) !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  transform: translateX(-50%) rotate(0deg) scale(0.82) !important;
+  transform-origin: center top !important;
+}
+
+.play-table-shell .casino-seat-layer:is(
+  .seat-count-5,
+  .seat-count-6
+) :is(
+  .seat-placement-bottom-left,
+  .seat-placement-bottom-right
+) .seat-card-stack {
+  position: absolute !important;
+  left: 50% !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: calc(100% - 0.9rem) !important;
+  margin: 0 !important;
+  transform: translateX(-50%) rotate(0deg) scale(0.82) !important;
+  transform-origin: center bottom !important;
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .play-table-shell .casino-seat-layer.seat-count-3 .seat-placement-top-left {
+    left: 32% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.82) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-3 .seat-placement-top-right {
+    left: 68% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.82) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-top-left {
+    left: 22% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-top-center {
+    left: 50% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-top-right {
+    left: 78% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-bottom-right {
+    left: 62% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 5.45rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.75) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-left {
+    left: 22% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 5.45rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-right {
+    left: 78% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 5.45rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .game-table-main:has(.seat-count-5) .mobile-local-seat { left: 38% !important; }
+  .game-table-main:has(.seat-count-6) .mobile-local-seat { left: 50% !important; }
+
+  .center-play-seat-count-2 .center-play-placement-top-center { left: 50% !important; top: 29% !important; }
+  .center-play-seat-count-2 .center-play-placement-bottom-center { left: 50% !important; top: 69% !important; }
+
+  .center-play-seat-count-3 .center-play-placement-top-left { left: 34% !important; top: 30% !important; }
+  .center-play-seat-count-3 .center-play-placement-top-right { left: 66% !important; top: 30% !important; }
+  .center-play-seat-count-3 .center-play-placement-bottom-center { left: 50% !important; top: 70% !important; }
+
+  .center-play-seat-count-5 .center-play-placement-top-left,
+  .center-play-seat-count-6 .center-play-placement-top-left { left: 22% !important; top: 29% !important; }
+  .center-play-seat-count-5 .center-play-placement-top-center,
+  .center-play-seat-count-6 .center-play-placement-top-center { left: 50% !important; top: 23% !important; }
+  .center-play-seat-count-5 .center-play-placement-top-right,
+  .center-play-seat-count-6 .center-play-placement-top-right { left: 78% !important; top: 29% !important; }
+  .center-play-seat-count-5 .center-play-placement-bottom-left { left: 35% !important; top: 70% !important; }
+  .center-play-seat-count-5 .center-play-placement-bottom-right { left: 65% !important; top: 70% !important; }
+  .center-play-seat-count-6 .center-play-placement-bottom-left { left: 22% !important; top: 70% !important; }
+  .center-play-seat-count-6 .center-play-placement-bottom-center { left: 50% !important; top: 76% !important; }
+  .center-play-seat-count-6 .center-play-placement-bottom-right { left: 78% !important; top: 70% !important; }
+
+  .play-table-shell .casino-seat-layer:is(
+    .seat-count-3,
+    .seat-count-5,
+    .seat-count-6
+  ) :is(
+    .seat-placement-top-left,
+    .seat-placement-top-center,
+    .seat-placement-top-right
+  ) .seat-card-stack {
+    top: calc(100% - 3rem) !important;
+    transform: translateX(-50%) rotate(0deg) scale(0.6) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(
+    .seat-count-5,
+    .seat-count-6
+  ) :is(
+    .seat-placement-bottom-left,
+    .seat-placement-bottom-right
+  ) .seat-card-stack {
+    bottom: calc(100% - 0.35rem) !important;
+    transform: translateX(-50%) rotate(0deg) scale(0.66) !important;
+  }
+}
+
 /* Turn ownership stays visible while the mobile dock keeps secondary actions tucked away. */
 .turn-owner-banner {
   position: absolute;
@@ -17857,5 +18245,492 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   .match-launch-spinner,
   .match-launch-progress i::after {
     animation-duration: 2.5s;
+  }
+}
+
+/* Final seat and mobile-action alignment. */
+.home-game-header .home-brand-kicker {
+  white-space: nowrap;
+}
+
+.mobile-menu-play-action {
+  display: none !important;
+}
+
+@media (min-width: 768px) {
+  .center-play-seat-1 {
+    left: 38% !important;
+  }
+
+  .center-play-seat-3 {
+    left: 62% !important;
+  }
+
+  .center-play-seat-4 {
+    left: 42% !important;
+  }
+
+  .center-play-seat-5 {
+    left: 58% !important;
+  }
+
+  .play-table-shell .seat-count-4 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-2 .seat-card-stack {
+    transform: rotate(87deg) translateY(0.75rem) !important;
+  }
+
+  .play-table-shell .seat-count-3 .casino-seat-2 .seat-card-stack,
+  .play-table-shell .seat-count-4 .casino-seat-3 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-4 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-4 .seat-card-stack {
+    transform: rotate(-87deg) translateY(0.75rem) !important;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .active-hand-dock .hand-tray-header > div:last-child,
+  .active-hand-dock .turn-controls,
+  .active-hand-dock .turn-controls:not(:has(.take-card-action)) {
+    grid-template-columns: minmax(0, 1fr) minmax(1.2rem, 0.3fr) minmax(0, 1fr) !important;
+  }
+
+  .turn-controls > .play-card-action {
+    display: none !important;
+  }
+
+  .turn-controls > .mobile-more-action {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .turn-controls > .mobile-chat-action {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+  }
+
+  .turn-more-menu .mobile-menu-play-action {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 2.8rem !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.55rem !important;
+    padding: 0.55rem 0.7rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .play-table-shell .seat-count-4 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-1 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-2 .seat-card-stack,
+  .play-table-shell .seat-count-3 .casino-seat-2 .seat-card-stack,
+  .play-table-shell .seat-count-4 .casino-seat-3 .seat-card-stack,
+  .play-table-shell .seat-count-5 .casino-seat-4 .seat-card-stack,
+  .play-table-shell .seat-count-6 .casino-seat-4 .seat-card-stack {
+    top: -2.55rem !important;
+  }
+}
+
+/* Five/six-player perimeter formations: seats, opponent hands and plays stay aligned. */
+@media (min-width: 768px) {
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-left-center {
+    left: clamp(0.35rem, 1.25vw, 1.35rem) !important;
+    right: auto !important;
+    top: 43% !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-right-center {
+    left: auto !important;
+    right: clamp(0.35rem, 1.25vw, 1.35rem) !important;
+    top: 43% !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-top-left {
+    left: 42% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-top-right {
+    left: 58% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-bottom-center {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-left {
+    left: 43% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-right {
+    left: 57% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 1.1rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-left-center .seat-card-stack,
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-right-center .seat-card-stack {
+    position: absolute !important;
+    top: -5.7rem !important;
+    left: 50% !important;
+    width: 8rem !important;
+    height: 3.5rem !important;
+    margin: 0 !important;
+    translate: -50% 0 !important;
+    transform-origin: center center !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-left-center .seat-card-stack {
+    transform: rotate(87deg) translateY(0.75rem) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-right-center .seat-card-stack {
+    transform: rotate(-87deg) translateY(0.75rem) !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-left,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-left {
+    left: 46% !important;
+    top: 30% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-right,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-right {
+    left: 54% !important;
+    top: 30% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-left-center,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-left-center {
+    left: 40% !important;
+    top: 50% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-right-center,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-right-center {
+    left: 60% !important;
+    top: 50% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-bottom-center {
+    left: 50% !important;
+    top: 70% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-left {
+    left: 46% !important;
+    top: 70% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-right {
+    left: 54% !important;
+    top: 70% !important;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-left-center {
+    left: -0.15rem !important;
+    right: auto !important;
+    top: 47% !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateY(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-right-center {
+    left: auto !important;
+    right: -0.15rem !important;
+    top: 47% !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateY(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-top-left {
+    left: 36% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-top-right {
+    left: 64% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-bottom-center {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 5.45rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.75) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-left {
+    left: 36% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 5.45rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-right {
+    left: 64% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 5.45rem !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.72) !important;
+  }
+
+  .game-table-main:has(.seat-count-5) .mobile-local-seat {
+    left: 50% !important;
+  }
+
+  .game-table-main:has(.seat-count-6) .mobile-local-seat {
+    left: 36% !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) :is(
+    .seat-placement-left-center,
+    .seat-placement-right-center
+  ) .seat-card-stack {
+    position: absolute !important;
+    top: -2.55rem !important;
+    left: 50% !important;
+    width: 8rem !important;
+    height: 3.5rem !important;
+    margin: 0 !important;
+    translate: -50% 0 !important;
+    transform-origin: center center !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-left-center .seat-card-stack {
+    transform: rotate(88deg) scale(0.76) !important;
+  }
+
+  .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) .seat-placement-right-center .seat-card-stack {
+    transform: rotate(-88deg) scale(0.76) !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-left,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-left {
+    left: 42% !important;
+    top: 30% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-top-right,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-top-right {
+    left: 58% !important;
+    top: 30% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-left-center,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-left-center {
+    left: 28% !important;
+    top: 50% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-right-center,
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-right-center {
+    left: 72% !important;
+    top: 50% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-placement-bottom-center {
+    left: 50% !important;
+    top: 70% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-left {
+    left: 42% !important;
+    top: 70% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-6 .center-play-placement-bottom-right {
+    left: 58% !important;
+    top: 70% !important;
+  }
+}
+
+/* Ordered trick rows: cards stay parallel and never overlap for four to six players. */
+.center-play-grid:is(
+  .center-play-seat-count-4,
+  .center-play-seat-count-5,
+  .center-play-seat-count-6
+) .center-play-slot {
+  transform: none !important;
+  translate: -50% -50% !important;
+}
+
+.center-play-grid:is(
+  .center-play-seat-count-4,
+  .center-play-seat-count-5,
+  .center-play-seat-count-6
+) .card-face {
+  width: clamp(4.15rem, 4.35vw, 5rem) !important;
+}
+
+@media (min-width: 768px) {
+  .center-play-grid.center-play-seat-count-4 .center-play-slot-0 {
+    left: 42% !important;
+    top: 30% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-4 .center-play-slot-1 {
+    left: 58% !important;
+    top: 30% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-4 .center-play-slot-2 {
+    left: 42% !important;
+    top: 70% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-4 .center-play-slot-3 {
+    left: 58% !important;
+    top: 70% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-0,
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-3 {
+    left: 32% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-1,
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-4 {
+    left: 50% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-2,
+  .center-play-grid.center-play-seat-count-6 .center-play-slot-5 {
+    left: 68% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
+    .center-play-slot-0,
+    .center-play-slot-1,
+    .center-play-slot-2
+  ) {
+    top: 30% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
+    .center-play-slot-3,
+    .center-play-slot-4,
+    .center-play-slot-5
+  ) {
+    top: 70% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-slot-3 {
+    left: 41% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-slot-4 {
+    left: 59% !important;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .center-play-grid:is(
+    .center-play-seat-count-4,
+    .center-play-seat-count-5,
+    .center-play-seat-count-6
+  ) .card-face {
+    width: clamp(3rem, 10.8vw, 3.45rem) !important;
+  }
+
+  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-0, .center-play-slot-2) {
+    left: 36% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-1, .center-play-slot-3) {
+    left: 64% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-0, .center-play-slot-1) {
+    top: 30% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-2, .center-play-slot-3) {
+    top: 70% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-0,
+  .center-play-grid.center-play-seat-count-6 .center-play-slot-3 {
+    left: 25% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-1,
+  .center-play-grid.center-play-seat-count-6 .center-play-slot-4 {
+    left: 50% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-2,
+  .center-play-grid.center-play-seat-count-6 .center-play-slot-5 {
+    left: 75% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
+    .center-play-slot-0,
+    .center-play-slot-1,
+    .center-play-slot-2
+  ) {
+    top: 30% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
+    .center-play-slot-3,
+    .center-play-slot-4,
+    .center-play-slot-5
+  ) {
+    top: 70% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-slot-3 {
+    left: 38% !important;
+  }
+
+  .center-play-grid.center-play-seat-count-5 .center-play-slot-4 {
+    left: 62% !important;
   }
 }

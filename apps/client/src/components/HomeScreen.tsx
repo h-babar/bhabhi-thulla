@@ -87,7 +87,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
   const [countryQuery, setCountryQuery] = useState("");
   const [nationCode, setNationCode] = useState("PAK");
   const [botCount, setBotCount] = useState(3);
-  const [targetScore, setTargetScore] = useState(5);
+  const [targetScore, setTargetScore] = useState(1);
   const [turnSeconds, setTurnSeconds] = useState(20);
   const [funMode, setFunMode] = useState<FunMode>("classic");
   const [roomVisibility, setRoomVisibility] = useState<RoomVisibility>("private");
@@ -138,7 +138,6 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
             </div>
             <div className="min-w-0">
               <p className="home-brand-kicker">Online Card Arena</p>
-              <h1 className="truncate text-lg font-black text-white sm:text-xl">Bhabhi Thulla</h1>
             </div>
           </div>
           <div className="flex items-center justify-end gap-2">

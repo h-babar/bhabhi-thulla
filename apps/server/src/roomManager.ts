@@ -230,7 +230,7 @@ export class RoomManager {
       settings: {
         ...payload.settings,
         maxPlayers: botCount + 1,
-        targetScore: payload.settings?.targetScore ?? 5,
+        targetScore: payload.settings?.targetScore ?? 1,
         turnSeconds: payload.settings?.turnSeconds ?? 20
       }
     });
