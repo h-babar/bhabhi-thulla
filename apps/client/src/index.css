@@ -18253,6 +18253,17 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   white-space: nowrap;
 }
 
+@media (max-width: 767px) {
+  .home-game-header .home-brand-kicker {
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .home-game-header .home-brand-kicker span:last-child {
+    display: block;
+  }
+}
+
 .mobile-menu-play-action {
   display: none !important;
 }
@@ -18370,6 +18381,23 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     transform: translateX(-50%) !important;
   }
 
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-left {
+    left: 36% !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-center {
+    left: 50% !important;
+    right: auto !important;
+    top: -3.65rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-right {
+    left: 64% !important;
+  }
+
   .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-bottom-center {
     left: 50% !important;
     right: auto !important;
@@ -18379,17 +18407,8 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     transform: translateX(-50%) !important;
   }
 
-  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-left {
-    left: 43% !important;
-    right: auto !important;
-    top: auto !important;
-    bottom: 1.1rem !important;
-    margin: 0 !important;
-    transform: translateX(-50%) !important;
-  }
-
-  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-right {
-    left: 57% !important;
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-center {
+    left: 50% !important;
     right: auto !important;
     top: auto !important;
     bottom: 1.1rem !important;
@@ -18494,6 +18513,25 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     transform: translateX(-50%) scale(0.72) !important;
   }
 
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-left {
+    left: 23% !important;
+    transform: translateX(-50%) scale(0.64) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-center {
+    left: 50% !important;
+    right: auto !important;
+    top: 0.4rem !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) scale(0.64) !important;
+  }
+
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-top-right {
+    left: 77% !important;
+    transform: translateX(-50%) scale(0.64) !important;
+  }
+
   .play-table-shell .casino-seat-layer.seat-count-5 .seat-placement-bottom-center {
     left: 50% !important;
     right: auto !important;
@@ -18503,17 +18541,8 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     transform: translateX(-50%) scale(0.75) !important;
   }
 
-  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-left {
-    left: 36% !important;
-    right: auto !important;
-    top: auto !important;
-    bottom: 5.45rem !important;
-    margin: 0 !important;
-    transform: translateX(-50%) scale(0.72) !important;
-  }
-
-  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-right {
-    left: 64% !important;
+  .play-table-shell .casino-seat-layer.seat-count-6 .seat-placement-bottom-center {
+    left: 50% !important;
     right: auto !important;
     top: auto !important;
     bottom: 5.45rem !important;
@@ -18526,7 +18555,7 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   }
 
   .game-table-main:has(.seat-count-6) .mobile-local-seat {
-    left: 36% !important;
+    left: 50% !important;
   }
 
   .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) :is(
@@ -18591,12 +18620,18 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   }
 }
 
-/* Ordered trick rows: cards stay parallel and never overlap for four to six players. */
+/* Seat-aware trick trails keep card ownership obvious without crowding the felt. */
 .center-play-grid:is(
+  .center-play-seat-count-2,
+  .center-play-seat-count-3,
   .center-play-seat-count-4,
   .center-play-seat-count-5,
   .center-play-seat-count-6
 ) .center-play-slot {
+  --played-card-accent: 91 229 190;
+  --played-card-route-angle: -90deg;
+  --played-card-route-length: clamp(5rem, 9vw, 9rem);
+  isolation: isolate;
   transform: none !important;
   translate: -50% -50% !important;
 }
@@ -18609,64 +18644,236 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   width: clamp(4.15rem, 4.35vw, 5rem) !important;
 }
 
+.center-play-seat-0 { --played-card-accent: 250 204 82 !important; }
+.center-play-seat-1 { --played-card-accent: 75 226 196 !important; }
+.center-play-seat-2 { --played-card-accent: 116 199 255 !important; }
+.center-play-seat-3 { --played-card-accent: 180 140 255 !important; }
+.center-play-seat-4 { --played-card-accent: 255 126 171 !important; }
+.center-play-seat-5 { --played-card-accent: 255 172 92 !important; }
+
+.played-card-route {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 50%;
+  width: var(--played-card-route-length);
+  height: 0.2rem;
+  pointer-events: none;
+  transform: rotate(var(--played-card-route-angle));
+  transform-origin: 0 50%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--played-card-accent) / 0.92) 0%,
+    rgb(var(--played-card-accent) / 0.58) 42%,
+    rgb(var(--played-card-accent) / 0.28) 82%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 0.4rem rgb(var(--played-card-accent) / 0.65),
+    0 0 1.15rem rgb(var(--played-card-accent) / 0.4),
+    0 0 2.4rem rgb(var(--played-card-accent) / 0.18);
+  opacity: 0.62;
+}
+
+.center-play-slot .card-face {
+  position: relative;
+  z-index: 2;
+}
+
+.played-card-route::before {
+  position: absolute;
+  top: 50%;
+  left: 8%;
+  width: 0.42rem;
+  height: 0.42rem;
+  content: "";
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgb(var(--played-card-accent));
+  box-shadow:
+    0 0 0.5rem rgb(var(--played-card-accent) / 0.95),
+    0 0 1.2rem rgb(var(--played-card-accent) / 0.72);
+  opacity: 0;
+}
+
+.played-card-route::after {
+  position: absolute;
+  inset: -0.55rem 0;
+  content: "";
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgb(var(--played-card-accent) / 0.28), transparent 82%);
+  filter: blur(0.65rem);
+}
+
+.center-play-slot-latest .played-card-route {
+  opacity: 0.92;
+  animation: played-card-route-pulse 1.35s ease-in-out infinite;
+}
+
+.center-play-slot-latest .played-card-route::before {
+  opacity: 1;
+  animation: played-card-route-tracer 1.35s ease-in-out infinite;
+}
+
+.played-card-owner {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: -1.7rem;
+  display: inline-flex;
+  max-width: 6.75rem;
+  min-height: 1.25rem;
+  align-items: center;
+  gap: 0.32rem;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border: 1px solid rgb(var(--played-card-accent) / 0.42);
+  border-radius: 999px;
+  background: rgb(3 15 18 / 0.86);
+  box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 0.28), 0 0 0.8rem rgb(var(--played-card-accent) / 0.12);
+  color: white;
+  padding: 0.2rem 0.48rem 0.22rem;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.played-card-owner > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.played-card-owner-dot {
+  width: 0.38rem;
+  height: 0.38rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgb(var(--played-card-accent));
+  box-shadow: 0 0 0.55rem rgb(var(--played-card-accent) / 0.8);
+}
+
+.center-play-slot-latest .played-card-owner {
+  border-color: rgb(var(--played-card-accent) / 0.82);
+  box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 0.3), 0 0 1rem rgb(var(--played-card-accent) / 0.3);
+}
+
+.center-play-grid .center-play-slot.center-play-placement-top-center,
+.center-play-grid .center-play-slot.center-play-placement-top-left,
+.center-play-grid .center-play-slot.center-play-placement-top-right {
+  --played-card-route-angle: -90deg;
+  --played-card-route-length: clamp(9rem, 20vh, 14rem);
+}
+
+.center-play-grid .center-play-slot.center-play-placement-bottom-center,
+.center-play-grid .center-play-slot.center-play-placement-bottom-left,
+.center-play-grid .center-play-slot.center-play-placement-bottom-right {
+  --played-card-route-angle: 90deg;
+  --played-card-route-length: clamp(9rem, 20vh, 14rem);
+}
+
+.center-play-grid .center-play-slot.center-play-placement-left-center {
+  --played-card-route-angle: 180deg;
+  --played-card-route-length: clamp(11rem, 24vw, 24rem);
+}
+
+.center-play-grid .center-play-slot.center-play-placement-right-center {
+  --played-card-route-angle: 0deg;
+  --played-card-route-length: clamp(11rem, 24vw, 24rem);
+}
+
+.center-play-grid .center-play-slot.center-play-placement-top-left { --played-card-route-angle: -98deg; }
+.center-play-grid .center-play-slot.center-play-placement-top-right { --played-card-route-angle: -82deg; }
+.center-play-grid .center-play-slot.center-play-placement-bottom-left { --played-card-route-angle: 98deg; }
+.center-play-grid .center-play-slot.center-play-placement-bottom-right { --played-card-route-angle: 82deg; }
+
+.center-play-placement-bottom-center .played-card-owner,
+.center-play-placement-bottom-left .played-card-owner,
+.center-play-placement-bottom-right .played-card-owner {
+  top: calc(100% + 0.42rem);
+}
+
+.center-play-placement-left-center .played-card-owner {
+  top: 50%;
+  right: calc(100% + 0.45rem);
+  left: auto;
+  transform: translateY(-50%);
+}
+
+.center-play-placement-right-center .played-card-owner {
+  top: 50%;
+  left: calc(100% + 0.45rem);
+  transform: translateY(-50%);
+}
+
+@keyframes played-card-route-pulse {
+  0%, 100% { filter: brightness(0.9); }
+  50% { filter: brightness(1.35); }
+}
+
+@keyframes played-card-route-tracer {
+  0% { left: 8%; opacity: 0; }
+  20% { opacity: 1; }
+  78% { opacity: 0.9; }
+  100% { left: 88%; opacity: 0; }
+}
+
 @media (min-width: 768px) {
-  .center-play-grid.center-play-seat-count-4 .center-play-slot-0 {
+  .center-play-seat-count-2 .center-play-placement-top-center { left: 50% !important; top: 34% !important; }
+  .center-play-seat-count-2 .center-play-placement-bottom-center { left: 50% !important; top: 66% !important; }
+
+  .center-play-seat-count-3 .center-play-placement-top-left { left: 40% !important; top: 34% !important; }
+  .center-play-seat-count-3 .center-play-placement-top-right { left: 60% !important; top: 34% !important; }
+  .center-play-seat-count-3 .center-play-placement-bottom-center { left: 50% !important; top: 66% !important; }
+
+  .center-play-seat-count-4 .center-play-placement-top-center { left: 50% !important; top: 32% !important; }
+  .center-play-seat-count-4 .center-play-placement-left-center { left: 34% !important; top: 50% !important; }
+  .center-play-seat-count-4 .center-play-placement-right-center { left: 66% !important; top: 50% !important; }
+  .center-play-seat-count-4 .center-play-placement-bottom-center { left: 50% !important; top: 68% !important; }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-top-left {
     left: 42% !important;
-    top: 30% !important;
+    top: 33% !important;
   }
 
-  .center-play-grid.center-play-seat-count-4 .center-play-slot-1 {
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-top-right {
     left: 58% !important;
-    top: 30% !important;
+    top: 33% !important;
   }
 
-  .center-play-grid.center-play-seat-count-4 .center-play-slot-2 {
-    left: 42% !important;
-    top: 70% !important;
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-left-center {
+    left: 30% !important;
+    top: 50% !important;
   }
 
-  .center-play-grid.center-play-seat-count-4 .center-play-slot-3 {
-    left: 58% !important;
-    top: 70% !important;
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-right-center {
+    left: 70% !important;
+    top: 50% !important;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-0,
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-3 {
-    left: 32% !important;
-  }
-
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-1,
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-4 {
+  .center-play-seat-count-5 .center-play-placement-bottom-center {
     left: 50% !important;
+    top: 67% !important;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-2,
-  .center-play-grid.center-play-seat-count-6 .center-play-slot-5 {
-    left: 68% !important;
+  .center-play-seat-count-6 .center-play-placement-top-left {
+    left: 40% !important;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
-    .center-play-slot-0,
-    .center-play-slot-1,
-    .center-play-slot-2
-  ) {
-    top: 30% !important;
+  .center-play-seat-count-6 .center-play-placement-top-center {
+    left: 50% !important;
+    top: 33% !important;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
-    .center-play-slot-3,
-    .center-play-slot-4,
-    .center-play-slot-5
-  ) {
-    top: 70% !important;
+  .center-play-seat-count-6 .center-play-placement-top-right {
+    left: 60% !important;
   }
 
-  .center-play-grid.center-play-seat-count-5 .center-play-slot-3 {
-    left: 41% !important;
-  }
-
-  .center-play-grid.center-play-seat-count-5 .center-play-slot-4 {
-    left: 59% !important;
+  .center-play-seat-count-6 .center-play-placement-bottom-center {
+    left: 50% !important;
+    top: 67% !important;
   }
 }
 
@@ -18679,58 +18886,102 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     width: clamp(3rem, 10.8vw, 3.45rem) !important;
   }
 
-  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-0, .center-play-slot-2) {
-    left: 36% !important;
+  .center-play-grid .center-play-slot {
+    --played-card-route-length: clamp(3rem, 16vw, 4.25rem);
   }
 
-  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-1, .center-play-slot-3) {
-    left: 64% !important;
+  .center-play-grid .center-play-slot.center-play-placement-left-center,
+  .center-play-grid .center-play-slot.center-play-placement-right-center {
+    --played-card-route-length: clamp(5.5rem, 28vw, 7rem);
   }
 
-  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-0, .center-play-slot-1) {
-    top: 30% !important;
+  .center-play-grid .center-play-slot.center-play-placement-top-center,
+  .center-play-grid .center-play-slot.center-play-placement-top-left,
+  .center-play-grid .center-play-slot.center-play-placement-top-right,
+  .center-play-grid .center-play-slot.center-play-placement-bottom-center,
+  .center-play-grid .center-play-slot.center-play-placement-bottom-left,
+  .center-play-grid .center-play-slot.center-play-placement-bottom-right {
+    --played-card-route-length: clamp(7rem, 24dvh, 13rem);
   }
 
-  .center-play-grid.center-play-seat-count-4 :is(.center-play-slot-2, .center-play-slot-3) {
-    top: 70% !important;
+  .played-card-owner {
+    max-width: 4.4rem;
+    min-height: 1rem;
+    top: -1.35rem;
+    padding: 0.16rem 0.34rem 0.18rem;
+    font-size: 0.47rem;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-0,
-  .center-play-grid.center-play-seat-count-6 .center-play-slot-3 {
-    left: 25% !important;
+  .played-card-owner-dot {
+    width: 0.3rem;
+    height: 0.3rem;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-1,
-  .center-play-grid.center-play-seat-count-6 .center-play-slot-4 {
+  .center-play-seat-count-2 .center-play-placement-top-center { left: 50% !important; top: 34% !important; }
+  .center-play-seat-count-2 .center-play-placement-bottom-center { left: 50% !important; top: 66% !important; }
+
+  .center-play-seat-count-3 .center-play-placement-top-left { left: 35% !important; top: 34% !important; }
+  .center-play-seat-count-3 .center-play-placement-top-right { left: 65% !important; top: 34% !important; }
+  .center-play-seat-count-3 .center-play-placement-bottom-center { left: 50% !important; top: 66% !important; }
+
+  .center-play-seat-count-4 .center-play-placement-top-center { left: 50% !important; top: 33% !important; }
+  .center-play-seat-count-4 .center-play-placement-left-center { left: 25% !important; top: 50% !important; }
+  .center-play-seat-count-4 .center-play-placement-right-center { left: 75% !important; top: 50% !important; }
+  .center-play-seat-count-4 .center-play-placement-bottom-center { left: 50% !important; top: 67% !important; }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-top-left {
+    left: 40% !important;
+    top: 33% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-top-right {
+    left: 60% !important;
+    top: 33% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-left-center {
+    left: 24% !important;
+    top: 50% !important;
+  }
+
+  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-placement-right-center {
+    left: 76% !important;
+    top: 50% !important;
+  }
+
+  .center-play-seat-count-5 .center-play-placement-bottom-center {
     left: 50% !important;
+    top: 67% !important;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) .center-play-slot-2,
-  .center-play-grid.center-play-seat-count-6 .center-play-slot-5 {
-    left: 75% !important;
+  .center-play-seat-count-6 .center-play-placement-top-left {
+    left: 30% !important;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
-    .center-play-slot-0,
-    .center-play-slot-1,
-    .center-play-slot-2
-  ) {
-    top: 30% !important;
+  .center-play-seat-count-6 .center-play-placement-top-center {
+    left: 50% !important;
+    top: 33% !important;
   }
 
-  .center-play-grid:is(.center-play-seat-count-5, .center-play-seat-count-6) :is(
-    .center-play-slot-3,
-    .center-play-slot-4,
-    .center-play-slot-5
-  ) {
-    top: 70% !important;
+  .center-play-seat-count-6 .center-play-placement-top-right {
+    left: 70% !important;
   }
 
-  .center-play-grid.center-play-seat-count-5 .center-play-slot-3 {
-    left: 38% !important;
+  .center-play-seat-count-6 .center-play-placement-bottom-center {
+    left: 50% !important;
+    top: 67% !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .center-play-slot-latest .played-card-route,
+  .center-play-slot-latest .played-card-route::before {
+    animation: none;
   }
 
-  .center-play-grid.center-play-seat-count-5 .center-play-slot-4 {
-    left: 62% !important;
+
+  .center-play-slot-latest .played-card-route::before {
+    left: 72%;
+    opacity: 0.8;
   }
 }

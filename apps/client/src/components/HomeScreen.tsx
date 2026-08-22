@@ -137,7 +137,7 @@ export function HomeScreen({ initialRoomCode }: HomeScreenProps) {
               <Crown size={22} />
             </div>
             <div className="min-w-0">
-              <p className="home-brand-kicker">Online Card Arena</p>
+              <p className="home-brand-kicker"><span>Online Card</span>{" "}<span>Arena</span></p>
             </div>
           </div>
           <div className="flex items-center justify-end gap-2">

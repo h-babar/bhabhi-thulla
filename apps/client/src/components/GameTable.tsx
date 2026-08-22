@@ -413,7 +413,7 @@ export function GameTable() {
                 </span>
                 <Copy size={16} />
               </button>
-              {state.roomMode !== "quick" ? (
+              {state.settings.targetScore > 1 ? (
                 <div className="active-round-card">
                   <small>Round</small>
                   <strong>{state.round} / {state.settings.targetScore}</strong>
@@ -877,7 +877,7 @@ const TABLE_SEAT_PLACEMENTS: Record<number, readonly TableSeatPlacement[]> = {
   3: ["bottom-center", "top-left", "top-right"],
   4: ["bottom-center", "left-center", "top-center", "right-center"],
   5: ["bottom-center", "left-center", "top-left", "top-right", "right-center"],
-  6: ["bottom-left", "left-center", "top-left", "top-right", "right-center", "bottom-right"]
+  6: ["bottom-center", "left-center", "top-left", "top-center", "top-right", "right-center"]
 };
 
 function getTableSeatPlacement(playerCount: number, seatIndex: number): TableSeatPlacement {
@@ -1412,6 +1412,7 @@ function TrickTable({
                       state.players.length,
                       Math.max(0, orderedPlayerIds.indexOf(play.playerId))
                     )}`,
+                    index === plays.length - 1 && "center-play-slot-latest",
                     play.offSuit && "center-play-slot-thulla",
                     winningPlayKey === `${play.playerId}-${play.card.id}` && "center-play-slot-winning"
                   )}
@@ -1434,6 +1435,11 @@ function TrickTable({
                       : { type: "spring", stiffness: 420, damping: 24, delay: index * 0.055 }
                   }
                 >
+                  <span className="played-card-route" aria-hidden="true" />
+                  <span className="played-card-owner" title={play.username}>
+                    <span className="played-card-owner-dot" aria-hidden="true" />
+                    <span>{play.username}</span>
+                  </span>
                   <CardView card={play.card} tableCard />
                 </motion.div>
               ))}
