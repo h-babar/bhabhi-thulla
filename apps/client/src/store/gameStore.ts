@@ -125,6 +125,7 @@ interface GameStore {
   tableLayout: TableLayout;
   weatherTheme: WeatherTheme;
   goHome: () => void;
+  returnHomeForNetworkProblem: () => void;
   resumeGame: () => void;
   openTournaments: () => void;
   connect: () => void;
@@ -205,8 +206,10 @@ export const useGameStore = create<GameStore>()(
         });
       };
 
-      const beginMatchLaunch = (kind: MatchLaunchKind): void => {
-        set({ matchLaunch: { kind, startedAt: Date.now() }, error: undefined });
+      const beginMatchLaunch = (kind: MatchLaunchKind): number => {
+        const startedAt = Date.now();
+        set({ matchLaunch: { kind, startedAt }, error: undefined });
+        return startedAt;
       };
 
       const isMissingRoomError = (message: string | undefined): boolean =>
@@ -214,8 +217,14 @@ export const useGameStore = create<GameStore>()(
 
       const handleJoinResponse = (
         response: RoomJoinResponse,
-        options: { autoReconnect?: boolean } = {}
+        options: { autoReconnect?: boolean; launchStartedAt?: number } = {}
       ): void => {
+        if (
+          options.launchStartedAt !== undefined &&
+          get().matchLaunch?.startedAt !== options.launchStartedAt
+        ) {
+          return;
+        }
         if (!response.ok || !response.state || !response.roomCode || !response.playerId) {
           if (isMissingRoomError(response.error)) {
             expireRoomSession(
@@ -471,6 +480,21 @@ export const useGameStore = create<GameStore>()(
         goHome: () => {
           set({ screen: "home", matchLaunch: undefined, error: undefined });
         },
+        returnHomeForNetworkProblem: () => {
+          stopBackgroundMusic();
+          socket?.disconnect();
+          socket = undefined;
+          set({
+            socketStatus: "offline",
+            screen: "home",
+            roomCode: undefined,
+            playerId: undefined,
+            state: undefined,
+            activeGame: undefined,
+            matchLaunch: undefined,
+            error: "Network Problem. Try again."
+          });
+        },
         resumeGame: () => {
           if (get().state && get().roomCode) {
             set({ screen: "room", error: undefined });
@@ -606,7 +630,7 @@ export const useGameStore = create<GameStore>()(
           }
         },
         createRoom: (settings, visibility = "private") => {
-          beginMatchLaunch("create");
+          const launchStartedAt = beginMatchLaunch("create");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "createRoom",
@@ -615,11 +639,11 @@ export const useGameStore = create<GameStore>()(
               settings,
               visibility
             },
-            handleJoinResponse
+            (response) => handleJoinResponse(response, { launchStartedAt })
           );
         },
         joinRoom: (roomCode, asSpectator = false) => {
-          beginMatchLaunch("join");
+          const launchStartedAt = beginMatchLaunch("join");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "joinRoom",
@@ -628,11 +652,11 @@ export const useGameStore = create<GameStore>()(
               roomCode,
               asSpectator
             },
-            handleJoinResponse
+            (response) => handleJoinResponse(response, { launchStartedAt })
           );
         },
         quickPlay: (difficulty = "normal", settings) => {
-          beginMatchLaunch("quick");
+          const launchStartedAt = beginMatchLaunch("quick");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "room:quickPlay",
@@ -641,11 +665,11 @@ export const useGameStore = create<GameStore>()(
               difficulty,
               settings
             },
-            handleJoinResponse
+            (response) => handleJoinResponse(response, { launchStartedAt })
           );
         },
         playWithBots: (difficulty, botCount, settings) => {
-          beginMatchLaunch("bots");
+          const launchStartedAt = beginMatchLaunch("bots");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "room:playWithBots",
@@ -655,11 +679,11 @@ export const useGameStore = create<GameStore>()(
               botCount,
               settings
             },
-            handleJoinResponse
+            (response) => handleJoinResponse(response, { launchStartedAt })
           );
         },
         startTournament: (nationCode, difficulty, options) => {
-          beginMatchLaunch("tournament");
+          const launchStartedAt = beginMatchLaunch("tournament");
           if (get().musicEnabled) primeBackgroundMusic();
           ensureSocket().emit(
             "room:startTournament",
@@ -669,7 +693,7 @@ export const useGameStore = create<GameStore>()(
               difficulty,
               ...options
             },
-            handleJoinResponse
+            (response) => handleJoinResponse(response, { launchStartedAt })
           );
         },
         addBot: (difficulty) => {
@@ -800,9 +824,9 @@ export const useGameStore = create<GameStore>()(
         },
         rejoinActiveGame: () => {
           if (get().accountType !== "registered" || !get().authToken) return;
-          beginMatchLaunch("rejoin");
+          const launchStartedAt = beginMatchLaunch("rejoin");
           ensureSocket().emit("player:rejoinActive", profilePayload(), (response) => {
-            handleJoinResponse(response);
+            handleJoinResponse(response, { launchStartedAt });
           });
         },
         takeControl: () => {

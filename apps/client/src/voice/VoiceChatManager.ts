@@ -73,6 +73,7 @@ interface AudioAnalysis {
 
 const PREFERENCES_KEY = "bhabhi-thulla-voice-preferences";
 const SPEAKING_RELEASE_MS = 520;
+const SIGNAL_TIMEOUT_MS = 8_000;
 
 const DEFAULT_PREFERENCES: VoicePreferences = {
   pushToTalk: false,
@@ -108,6 +109,8 @@ export class VoiceChatManager {
   private iceServers: RTCIceServer[] = [];
   private preferences = loadPreferences();
   private pttPressed = false;
+  private rejoinTimer?: number;
+  private playbackUnlockPending = false;
 
   constructor(
     private readonly socket: GameSocket,
@@ -131,6 +134,7 @@ export class VoiceChatManager {
 
     this.setStatus("permission");
     try {
+      await this.unlockAudioPlayback();
       this.localStream = await navigator.mediaDevices.getUserMedia({ audio: this.audioConstraints() });
       if (this.preferences.pushToTalk) {
         this.selfMuted = true;
@@ -172,6 +176,8 @@ export class VoiceChatManager {
     this.closeConnections();
     this.stopLocalStream();
     if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
+    if (this.rejoinTimer) window.clearTimeout(this.rejoinTimer);
+    document.removeEventListener("pointerdown", this.handlePlaybackUnlock, true);
     void this.audioContext?.close();
   }
 
@@ -313,9 +319,19 @@ export class VoiceChatManager {
     this.publish();
   };
 
+  private readonly handleSocketConnect = (): void => {
+    if (!this.joined || this.status !== "reconnecting") return;
+    this.scheduleSignalingRejoin(180);
+  };
+
   private readonly handleRoomState = (): void => {
     if (!this.joined || this.status !== "reconnecting" || !this.socket.connected) return;
-    window.setTimeout(() => void this.rejoinSignaling(), 250);
+    this.scheduleSignalingRejoin(250);
+  };
+
+  private readonly handlePlaybackUnlock = (): void => {
+    this.playbackUnlockPending = false;
+    void this.unlockAudioPlayback();
   };
 
   private readonly handleDeviceChange = (): void => {
@@ -354,6 +370,7 @@ export class VoiceChatManager {
     this.socket.on("voice:mute-state", this.handleMuteState);
     this.socket.on("voice:connection-state", this.handleConnectionState);
     this.socket.on("voice:error", this.handleVoiceError);
+    this.socket.on("connect", this.handleSocketConnect);
     this.socket.on("disconnect", this.handleSocketDisconnect);
     this.socket.on("room:state", this.handleRoomState);
   }
@@ -367,14 +384,14 @@ export class VoiceChatManager {
     this.socket.off("voice:mute-state", this.handleMuteState);
     this.socket.off("voice:connection-state", this.handleConnectionState);
     this.socket.off("voice:error", this.handleVoiceError);
+    this.socket.off("connect", this.handleSocketConnect);
     this.socket.off("disconnect", this.handleSocketDisconnect);
     this.socket.off("room:state", this.handleRoomState);
   }
 
   private async joinSignaling(): Promise<void> {
-    const response = await new Promise<VoiceJoinResponse>((resolve) => {
-      this.socket.emit("voice:join", { roomId: this.roomId }, resolve);
-    });
+    if (!this.socket.connected) throw new Error("The game server is reconnecting. Try voice again in a moment.");
+    const response = await this.requestVoiceJoin();
     if (!response.ok) throw new Error(response.error ?? "Voice could not join this room.");
     this.iceServers = toRtcIceServers(response.iceServers ?? []);
     this.participants = new Map((response.participants ?? []).map((participant) => [participant.playerId, participant]));
@@ -403,16 +420,45 @@ export class VoiceChatManager {
       this.status = "reconnecting";
       this.error = error instanceof Error ? error.message : "Voice is reconnecting.";
       this.publish();
-      window.setTimeout(() => {
-        if (!this.destroyed && this.status === "reconnecting") void this.rejoinSignaling();
-      }, 1800);
+      this.scheduleSignalingRejoin(1800);
     }
+  }
+
+  private requestVoiceJoin(): Promise<VoiceJoinResponse> {
+    return new Promise((resolve) => {
+      let settled = false;
+      const timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resolve({ ok: false, error: "Voice server did not respond. Check your connection and try again." });
+      }, SIGNAL_TIMEOUT_MS);
+      this.socket.emit("voice:join", { roomId: this.roomId }, (response) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        resolve(response);
+      });
+    });
+  }
+
+  private scheduleSignalingRejoin(delay: number): void {
+    if (this.rejoinTimer) window.clearTimeout(this.rejoinTimer);
+    this.rejoinTimer = window.setTimeout(() => {
+      this.rejoinTimer = undefined;
+      if (!this.destroyed && this.status === "reconnecting" && this.socket.connected) {
+        void this.rejoinSignaling();
+      }
+    }, delay);
   }
 
   private ensurePeer(remotePlayerId: string): PeerRecord {
     const existing = this.peers.get(remotePlayerId);
     if (existing) return existing;
-    const connection = new RTCPeerConnection({ iceServers: this.iceServers, bundlePolicy: "max-bundle" });
+    const connection = new RTCPeerConnection({
+      iceServers: this.iceServers,
+      bundlePolicy: "max-bundle",
+      iceCandidatePoolSize: 4
+    });
     const record: PeerRecord = { connection, pendingCandidates: [] };
     this.peers.set(remotePlayerId, record);
     for (const track of this.localStream?.getAudioTracks() ?? []) {
@@ -542,9 +588,33 @@ export class VoiceChatManager {
     void this.setAudioSink(audio);
     void audio.play().catch(() => {
       this.notice = "Tap the voice control once to allow remote audio playback.";
+      if (!this.playbackUnlockPending) {
+        this.playbackUnlockPending = true;
+        document.addEventListener("pointerdown", this.handlePlaybackUnlock, { once: true, capture: true });
+      }
       this.publish();
     });
     this.installAnalysis(playerId, stream);
+  }
+
+  private async unlockAudioPlayback(): Promise<void> {
+    try {
+      this.audioContext ??= new AudioContext();
+      if (this.audioContext.state === "suspended") await this.audioContext.resume();
+    } catch {
+      // Audio elements can still play when Web Audio is unavailable.
+    }
+    await Promise.all([...this.remoteAudio.values()].map(async (audio) => {
+      try {
+        await audio.play();
+      } catch {
+        // A later pointer gesture will retry playback.
+      }
+    }));
+    if (this.remoteAudio.size > 0) {
+      this.notice = undefined;
+      this.publish();
+    }
   }
 
   private installLocalAnalysis(): void {

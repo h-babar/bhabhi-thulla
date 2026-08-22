@@ -96,6 +96,7 @@ export function GameTable() {
   const [tablePhrase, setTablePhrase] = useState<{ id: number; text: string; tone: "good" | "warn" | "rush" }>();
   const [activeTableTool, setActiveTableTool] = useState<ActiveTableTool>("none");
   const [handSortMode, setHandSortMode] = useState<HandSortMode>("deal");
+  const [mobileTopActionsOpen, setMobileTopActionsOpen] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1280 : window.innerWidth
   );
@@ -132,6 +133,12 @@ export function GameTable() {
     window.addEventListener("resize", updateViewportWidth, { passive: true });
     return () => window.removeEventListener("resize", updateViewportWidth);
   }, []);
+
+  useEffect(() => {
+    if (!mobileTopActionsOpen) return undefined;
+    const timeout = window.setTimeout(() => setMobileTopActionsOpen(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [mobileTopActionsOpen]);
 
   useEffect(() => {
     const resultId = shareableMatchResult?.publicMatchId;
@@ -434,21 +441,66 @@ export function GameTable() {
             <TurnTimerBadge state={state} activePlayerName={activePlayer?.username} />
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="playing-header-actions flex flex-wrap items-center gap-2">
           <VoiceControls />
-          <FriendsButton compact />
-          <button className="secondary-button match-rules-button" onClick={() => setRulesOpen(true)}>
-            <BookOpen size={17} />
-            Rules
-          </button>
-          <button className="secondary-button" onClick={copyRoomLink}>
-            {copied ? <Copy size={17} /> : <Share2 size={17} />}
-            {copied ? "Copied" : "Share"}
-          </button>
+          <div className="desktop-match-header-actions">
+            <FriendsButton compact />
+            <button className="secondary-button match-rules-button" onClick={() => setRulesOpen(true)}>
+              <BookOpen size={17} />
+              Rules
+            </button>
+            <button className="secondary-button" onClick={copyRoomLink}>
+              {copied ? <Copy size={17} /> : <Share2 size={17} />}
+              {copied ? "Copied" : "Share"}
+            </button>
+          </div>
           <button className="icon-button" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
             <Settings size={18} />
           </button>
-          <ProfileMenu compact onSettings={() => setSettingsOpen(true)} />
+          <div className="desktop-match-profile">
+            <ProfileMenu compact onSettings={() => setSettingsOpen(true)} />
+          </div>
+          <button
+            type="button"
+            className={clsx("icon-button mobile-top-actions-trigger", mobileTopActionsOpen && "is-active")}
+            onClick={() => setMobileTopActionsOpen((current) => !current)}
+            aria-label="Show match menu"
+            aria-expanded={mobileTopActionsOpen}
+            aria-controls={mobileTopActionsOpen ? "mobile-match-top-actions" : undefined}
+          >
+            {mobileTopActionsOpen ? <X size={18} /> : <MoreHorizontal size={19} />}
+          </button>
+          <AnimatePresence>
+            {mobileTopActionsOpen ? (
+              <motion.div
+                id="mobile-match-top-actions"
+                className="mobile-match-top-actions"
+                initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+              >
+                <button type="button" onClick={leaveRoom} aria-label="Return home" title="Home">
+                  <Home size={17} />
+                  <span>Home</span>
+                </button>
+                <button type="button" onClick={() => void copyRoomLink()} aria-label="Copy room invite" title="Copy room invite">
+                  <Copy size={17} />
+                  <span>{state.roomCode}</span>
+                </button>
+                <span className="mobile-match-friends-action"><FriendsButton compact /></span>
+                <button type="button" onClick={() => { setMobileTopActionsOpen(false); setRulesOpen(true); }}>
+                  <BookOpen size={17} />
+                  <span>Rules</span>
+                </button>
+                <button type="button" onClick={() => void copyRoomLink()}>
+                  <Share2 size={17} />
+                  <span>Share</span>
+                </button>
+                <span className="mobile-match-profile-action"><ProfileMenu compact onSettings={() => setSettingsOpen(true)} /></span>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </header>
 
@@ -1768,6 +1820,12 @@ function TurnControls({
       ? `Follow ${SUIT_LABELS[leadSuit]}`
       : "Lead any card";
 
+  useEffect(() => {
+    if (!mobileActionsOpen) return undefined;
+    const timeout = window.setTimeout(() => setMobileActionsOpen(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [mobileActionsOpen]);
+
   return (
     <div className="turn-controls relative flex flex-wrap items-center justify-end gap-1.5">
       <span className="turn-hint rounded-full bg-slate-950/5 px-2.5 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-600 dark:bg-white/10 dark:text-slate-300">
@@ -1799,7 +1857,7 @@ function TurnControls({
         aria-controls={mobileActionsOpen ? "mobile-turn-more-menu" : undefined}
       >
         <MoreHorizontal size={19} />
-        More
+        <span>More</span>
       </button>
 
       <AnimatePresence>
@@ -1826,6 +1884,17 @@ function TurnControls({
             >
               <Sparkles size={16} />
               Play selected card
+            </button>
+            <button
+              type="button"
+              className={clsx("mobile-menu-chat-action secondary-button", chatOpen && "mobile-dock-action-active")}
+              onClick={() => {
+                setMobileActionsOpen(false);
+                onChat();
+              }}
+            >
+              <MessageCircle size={16} />
+              {chatOpen ? "Close chat" : "Open chat"}
             </button>
             {takeTarget ? (
               <button

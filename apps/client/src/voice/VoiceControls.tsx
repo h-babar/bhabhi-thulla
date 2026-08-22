@@ -35,6 +35,18 @@ export function VoiceControls() {
   return (
     <>
       <div className={clsx("voice-control-cluster", voice.enabled && "voice-control-cluster-live")} role="group" aria-label="Voice chat controls">
+        <button
+          type="button"
+          className="voice-mobile-compact-button"
+          onClick={() => voice.enabled ? setSettingsOpen(true) : setConsentOpen(true)}
+          disabled={busy}
+          aria-label={voice.enabled ? `${statusLabel}. Open voice controls` : `${statusLabel}. Enable voice chat`}
+          title={voice.enabled ? `${statusLabel}. Open voice controls` : `${statusLabel}. Enable voice chat`}
+        >
+          {voice.status === "permission-blocked" || voice.status === "no-device" || voice.status === "failed"
+            ? <WifiOff size={18} />
+            : busy ? <Radio className="voice-connecting-icon" size={18} /> : voice.selfMuted ? <MicOff size={18} /> : <Mic size={18} />}
+        </button>
         {!voice.enabled ? (
           <button
             type="button"

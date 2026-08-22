@@ -97,7 +97,11 @@ export function MatchLaunchOverlay() {
 
             <div className="match-launch-footer">
               <span><Clock3 size={14} /> {Math.max(1, Math.ceil(elapsed / 1000))}s</span>
-              <strong>{phase === "problem" ? "Auto reconnecting" : "Please wait"}</strong>
+              <strong>
+                {phase === "problem"
+                  ? `Returning home in ${Math.max(0, 30 - Math.ceil(elapsed / 1000))}s`
+                  : "Please wait"}
+              </strong>
             </div>
           </motion.div>
         </motion.div>

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { AlertTriangle, WifiOff } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GameTable } from "./components/GameTable.js";
 import { HomeScreen } from "./components/HomeScreen.js";
 import { MatchLaunchOverlay } from "./components/MatchLaunchOverlay.js";
@@ -16,6 +16,9 @@ export function App() {
   const hydrateTheme = useGameStore((store) => store.hydrateTheme);
   const screen = useGameStore((store) => store.screen);
   const state = useGameStore((store) => store.state);
+  const socketStatus = useGameStore((store) => store.socketStatus);
+  const matchLaunch = useGameStore((store) => store.matchLaunch);
+  const returnHomeForNetworkProblem = useGameStore((store) => store.returnHomeForNetworkProblem);
   const error = useGameStore((store) => store.error);
   const clearError = useGameStore((store) => store.clearError);
   const syncIdentity = useGameStore((store) => store.syncIdentity);
@@ -36,6 +39,8 @@ export function App() {
   const guest = useAuthStore((store) => store.guest);
   const profile = useAuthStore((store) => store.profile);
   const idToken = useAuthStore((store) => store.idToken);
+  const [networkSecondsLeft, setNetworkSecondsLeft] = useState<number>();
+  const trackedNetworkProblem = useRef<{ key: string; startedAt: number } | undefined>(undefined);
 
   const initialRoomCode = useMemo(() => {
     if (typeof window === "undefined") {
@@ -83,6 +88,46 @@ export function App() {
     }
   }, [lastMatchResult, matchResultPending, openMatchResult, screen]);
 
+  useEffect(() => {
+    const disconnectedRoom = screen === "room" && Boolean(state) && socketStatus !== "online";
+    const problemKey = matchLaunch
+      ? `launch:${matchLaunch.startedAt}`
+      : disconnectedRoom && state
+        ? `room:${state.roomCode}`
+        : undefined;
+
+    if (!problemKey) {
+      trackedNetworkProblem.current = undefined;
+      setNetworkSecondsLeft(undefined);
+      return undefined;
+    }
+
+    if (trackedNetworkProblem.current?.key !== problemKey) {
+      trackedNetworkProblem.current = {
+        key: problemKey,
+        startedAt: matchLaunch?.startedAt ?? Date.now()
+      };
+    }
+    const startedAt = trackedNetworkProblem.current.startedAt;
+    const updateCountdown = () => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      setNetworkSecondsLeft(Math.max(0, 30 - elapsedSeconds));
+    };
+    updateCountdown();
+    const interval = window.setInterval(updateCountdown, 250);
+    const remainingMs = Math.max(0, 30_000 - (Date.now() - startedAt));
+    const timeout = window.setTimeout(() => {
+      trackedNetworkProblem.current = undefined;
+      setNetworkSecondsLeft(undefined);
+      returnHomeForNetworkProblem();
+    }, remainingMs);
+
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [matchLaunch, returnHomeForNetworkProblem, screen, socketStatus, state]);
+
   return (
     <>
       {screen === "room" && state ? (
@@ -116,6 +161,25 @@ export function App() {
       />
 
       <MatchLaunchOverlay />
+
+      <AnimatePresence>
+        {networkSecondsLeft !== undefined && screen === "room" ? (
+          <motion.div
+            className="network-recovery-banner"
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: -14, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <WifiOff size={18} />
+            <span>
+              <strong>Connection interrupted</strong>
+              <small>Reconnecting now. Returning home in {networkSecondsLeft}s if the network does not recover.</small>
+            </span>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {error ? (

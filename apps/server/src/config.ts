@@ -29,7 +29,10 @@ export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   firebaseProjectId: process.env.FIREBASE_PROJECT_ID?.trim(),
   voice: {
-    stunUrls: listFromEnv("VOICE_STUN_URLS", ["stun:stun.l.google.com:19302"]),
+    stunUrls: listFromEnv("VOICE_STUN_URLS", [
+      "stun:stun.l.google.com:19302",
+      "stun:stun1.l.google.com:19302"
+    ]),
     turnUrls: listFromEnv("VOICE_TURN_URLS"),
     turnUsername: process.env.VOICE_TURN_USERNAME?.trim(),
     turnCredential: process.env.VOICE_TURN_CREDENTIAL?.trim(),

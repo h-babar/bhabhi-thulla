@@ -16756,6 +16756,227 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   }
 }
 
+/* Match connectivity and compact mobile command surfaces. */
+.network-recovery-banner {
+  position: fixed;
+  top: 0.8rem;
+  left: 50%;
+  z-index: 140;
+  display: flex;
+  width: min(34rem, calc(100% - 1.5rem));
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid rgba(251, 191, 36, 0.46);
+  border-radius: 1rem;
+  background: rgba(10, 14, 20, 0.94);
+  padding: 0.7rem 0.85rem;
+  color: #fff7ed;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.42), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.network-recovery-banner > svg {
+  flex: 0 0 auto;
+  color: #fbbf24;
+}
+
+.network-recovery-banner > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.network-recovery-banner strong {
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.network-recovery-banner small {
+  color: rgba(255, 247, 237, 0.72);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.desktop-match-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mobile-top-actions-trigger,
+.mobile-match-top-actions,
+.mobile-menu-chat-action,
+.voice-mobile-compact-button {
+  display: none !important;
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .game-table-main .playing-header {
+    align-items: flex-start !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .game-table-main .playing-hud-left > .icon-button,
+  .game-table-main .playing-hud-left > .active-room-stack,
+  .game-table-main .desktop-match-header-actions,
+  .game-table-main .desktop-match-profile {
+    display: none !important;
+  }
+
+  .playing-header-actions {
+    position: relative;
+    margin-left: auto;
+    flex-wrap: nowrap !important;
+    gap: 0.38rem !important;
+  }
+
+  .playing-header-actions > .voice-control-cluster {
+    min-height: 2.7rem;
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(4, 7, 12, 0.78);
+    box-shadow: 0 0.75rem 1.8rem rgba(0, 0, 0, 0.3);
+  }
+
+  .playing-header-actions > .voice-control-cluster > :not(.voice-mobile-compact-button) {
+    display: none !important;
+  }
+
+  .playing-header-actions .voice-mobile-compact-button {
+    display: grid !important;
+    width: 2.72rem;
+    min-width: 2.72rem;
+    min-height: 2.72rem;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #f8fafc;
+  }
+
+  .playing-header-actions > .icon-button {
+    width: 2.72rem !important;
+    min-width: 2.72rem !important;
+    min-height: 2.72rem !important;
+    padding: 0 !important;
+  }
+
+  .playing-header-actions > .mobile-top-actions-trigger {
+    display: grid !important;
+  }
+
+  .playing-header-actions > .mobile-top-actions-trigger.is-active {
+    border-color: rgba(94, 234, 212, 0.55) !important;
+    color: #5eead4 !important;
+  }
+
+  .mobile-match-top-actions {
+    position: fixed;
+    top: 4.05rem;
+    right: 0.45rem;
+    left: 0.45rem;
+    z-index: 125;
+    display: flex !important;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 1rem;
+    background: rgba(3, 10, 14, 0.95);
+    padding: 0.42rem;
+    box-shadow: 0 1rem 2.8rem rgba(0, 0, 0, 0.48), inset 0 1px rgba(255, 255, 255, 0.07);
+    scrollbar-width: none;
+    backdrop-filter: blur(20px) saturate(1.12);
+  }
+
+  .mobile-match-top-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-match-top-actions > button,
+  .mobile-match-top-actions > span > button,
+  .mobile-match-top-actions > span > div > button {
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: 2.55rem !important;
+    min-height: 2.55rem !important;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 0.32rem;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 0.78rem !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    padding: 0.45rem 0.62rem !important;
+    color: #f8fafc !important;
+    font-size: 0.62rem !important;
+    font-weight: 850 !important;
+    white-space: nowrap;
+  }
+
+  .mobile-match-top-actions .mobile-match-friends-action,
+  .mobile-match-top-actions .mobile-match-profile-action {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .active-hand-dock .hand-tray-header > div:last-child,
+  .active-hand-dock .turn-controls,
+  .active-hand-dock .turn-controls:not(:has(.take-card-action)) {
+    display: flex !important;
+    width: auto !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+  }
+
+  .turn-controls > .turn-hint,
+  .turn-controls > .play-card-action,
+  .turn-controls > .mobile-chat-action {
+    display: none !important;
+  }
+
+  .turn-controls > .mobile-more-action {
+    display: grid !important;
+    width: 3.1rem !important;
+    min-width: 3.1rem !important;
+    min-height: 3.1rem !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    place-items: center;
+    border-radius: 50% !important;
+    padding: 0 !important;
+  }
+
+  .turn-controls > .mobile-more-action > span {
+    display: none;
+  }
+
+  .turn-more-menu {
+    right: 0 !important;
+    bottom: calc(100% + 0.55rem) !important;
+    width: min(15rem, calc(100vw - 1.2rem)) !important;
+  }
+
+  .turn-more-menu .mobile-menu-chat-action {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-height: 2.8rem !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.55rem !important;
+    padding: 0.55rem 0.7rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .network-recovery-banner {
+    top: 4.2rem;
+  }
+}
+
 /* Final five/six-player readability: visible bottom names, tighter tricks and controls. */
 @media (min-width: 768px) {
   .play-table-shell .casino-seat-layer:is(.seat-count-5, .seat-count-6) :is(
@@ -18983,5 +19204,53 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
   .center-play-slot-latest .played-card-route::before {
     left: 72%;
     opacity: 0.8;
+  }
+}
+
+/* Final mobile dock precedence: one compact launcher, with every command inside it. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .active-hand-dock .hand-tray-header > div:last-child,
+  .active-hand-dock .turn-controls,
+  .active-hand-dock .turn-controls:not(:has(.take-card-action)) {
+    display: flex !important;
+    width: auto !important;
+    grid-template-columns: none !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+  }
+
+  .turn-controls > .turn-hint,
+  .turn-controls > .play-card-action,
+  .turn-controls > .mobile-chat-action {
+    display: none !important;
+  }
+
+  .turn-controls > .mobile-more-action,
+  .active-hand-dock .hand-tray-header > .turn-controls > .mobile-more-action:last-child {
+    display: grid !important;
+    width: 3.1rem !important;
+    min-width: 3.1rem !important;
+    min-height: 3.1rem !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    place-items: center !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+  }
+
+  .turn-controls > .mobile-more-action > span {
+    display: none !important;
+  }
+
+  .turn-more-menu .mobile-menu-chat-action,
+  .turn-more-menu .mobile-menu-play-action {
+    display: inline-flex !important;
+    width: 100% !important;
+    min-height: 2.8rem !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.55rem !important;
+    padding: 0.55rem 0.7rem !important;
+    font-size: 0.72rem !important;
   }
 }
