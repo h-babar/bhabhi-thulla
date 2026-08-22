@@ -18521,6 +18521,15 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
+  .game-table-main .playing-hud-left > .mobile-match-home-button {
+    display: grid !important;
+    width: 2.72rem !important;
+    min-width: 2.72rem !important;
+    min-height: 2.72rem !important;
+    place-items: center;
+    padding: 0 !important;
+  }
+
   .active-hand-dock .hand-tray-header > div:last-child,
   .active-hand-dock .turn-controls,
   .active-hand-dock .turn-controls:not(:has(.take-card-action)) {

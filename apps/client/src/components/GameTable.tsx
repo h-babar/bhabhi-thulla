@@ -403,7 +403,7 @@ export function GameTable() {
     )}>
       <header className={clsx("mb-3 flex flex-wrap items-center justify-between gap-3", inActivePlay && "playing-header")}>
         <div className={clsx("flex items-center gap-3", inActivePlay && "playing-hud-left")}>
-          <button className="icon-button" onClick={leaveRoom} aria-label="Leave room">
+          <button className="icon-button mobile-match-home-button" onClick={leaveRoom} aria-label="Leave room">
             <Home size={18} />
           </button>
           {inActivePlay ? (
