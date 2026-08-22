@@ -78,6 +78,13 @@ const SIGNAL_TIMEOUT_MS = 8_000;
 const NEGOTIATION_RETRY_MS = 2_400;
 const MAX_NEGOTIATION_ATTEMPTS = 5;
 const MAX_PENDING_SIGNALS = 64;
+const BACKUP_TURN_TTL_SECONDS = 60 * 60;
+const BACKUP_TURN_SECRET = "openrelayprojectsecret";
+const BACKUP_TURN_URLS = [
+  "turn:staticauth.openrelay.metered.ca:80?transport=udp",
+  "turn:staticauth.openrelay.metered.ca:80?transport=tcp",
+  "turns:staticauth.openrelay.metered.ca:443?transport=tcp"
+];
 
 const DEFAULT_PREFERENCES: VoicePreferences = {
   pushToTalk: false,
@@ -421,19 +428,24 @@ export class VoiceChatManager {
     if (!this.socket.connected) throw new Error("The game server is reconnecting. Try voice again in a moment.");
     const response = await this.requestVoiceJoin();
     if (!response.ok) throw new Error(response.error ?? "Voice could not join this room.");
-    this.iceServers = toRtcIceServers(response.iceServers ?? []);
-    this.relayAvailable = this.iceServers.some((server) => {
-      const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-      return urls.some((url) => url.startsWith("turn:") || url.startsWith("turns:"));
-    });
+    const configuredIceServers = toRtcIceServers(response.iceServers ?? []);
+    const usedBackupRelay = !hasTurnRelay(configuredIceServers);
+    if (usedBackupRelay) {
+      const backupRelay = await createBackupTurnServer(this.playerId);
+      if (backupRelay) configuredIceServers.push(backupRelay);
+    }
+    this.iceServers = configuredIceServers;
+    this.relayAvailable = hasTurnRelay(this.iceServers);
     this.participants = new Map((response.participants ?? []).map((participant) => [participant.playerId, participant]));
     this.joined = true;
     this.error = undefined;
     const hasRemoteParticipants = [...this.participants.keys()].some((id) => id !== this.playerId);
     this.status = hasRemoteParticipants ? "connecting" : this.selfMuted ? "muted" : "connected";
-    this.notice = hasRemoteParticipants && !this.relayAvailable
-      ? "Direct voice is starting without a TURN relay. Some mobile or restricted networks may not connect."
-      : undefined;
+    this.notice = hasRemoteParticipants && usedBackupRelay && this.relayAvailable
+      ? "Voice is connecting through the backup network relay."
+      : hasRemoteParticipants && !this.relayAvailable
+        ? "The network relay could not be prepared. Refresh the table and rejoin voice."
+        : undefined;
     this.socket.emit("voice:connection-state", { roomId: this.roomId, connectionState: "connected" }, () => undefined);
     if (this.selfMuted) {
       this.socket.emit("voice:mute-state", { roomId: this.roomId, isSelfMuted: true }, () => undefined);
@@ -1001,6 +1013,38 @@ function toRtcIceServers(servers: VoiceIceServer[]): RTCIceServer[] {
     username: server.username,
     credential: server.credential
   }));
+}
+
+function hasTurnRelay(servers: RTCIceServer[]): boolean {
+  return servers.some((server) => {
+    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+    return urls.some((url) => url.startsWith("turn:") || url.startsWith("turns:"));
+  });
+}
+
+async function createBackupTurnServer(playerId: string): Promise<RTCIceServer | undefined> {
+  if (!globalThis.crypto?.subtle) return undefined;
+  try {
+    const username = `${Math.floor(Date.now() / 1_000) + BACKUP_TURN_TTL_SECONDS}:${playerId}`;
+    const key = await globalThis.crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(BACKUP_TURN_SECRET),
+      { name: "HMAC", hash: "SHA-1" },
+      false,
+      ["sign"]
+    );
+    const signature = await globalThis.crypto.subtle.sign("HMAC", key, new TextEncoder().encode(username));
+    const credential = bytesToBase64(new Uint8Array(signature));
+    return { urls: BACKUP_TURN_URLS, username, credential };
+  } catch {
+    return undefined;
+  }
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return window.btoa(binary);
 }
 
 function clamp(value: number, min = 0, max = 1): number {
