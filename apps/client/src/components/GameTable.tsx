@@ -1883,7 +1883,7 @@ function TurnControls({
               }}
             >
               <Sparkles size={16} />
-              Play selected card
+              Play
             </button>
             <button
               type="button"

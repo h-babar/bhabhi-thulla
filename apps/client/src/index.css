@@ -19262,4 +19262,24 @@ html body .game-table-main:has(.play-table-shell[class*="table-theme-"]) {
     padding: 0.55rem 0.7rem !important;
     font-size: 0.72rem !important;
   }
+
+  .active-hand-dock .hand-tray-header {
+    left: auto !important;
+    right: max(0.55rem, env(safe-area-inset-right)) !important;
+    bottom: max(0.45rem, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    transform: none !important;
+  }
+
+  .active-hand-dock .hand-tray-header > .turn-controls {
+    position: relative !important;
+    margin-left: auto !important;
+  }
+
+  .turn-more-menu {
+    right: 0 !important;
+    left: auto !important;
+    bottom: calc(100% + 0.55rem) !important;
+    transform-origin: bottom right !important;
+  }
 }
