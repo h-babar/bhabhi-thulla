@@ -1,5 +1,6 @@
 import type { GameState, VoiceForwardedSessionSignal } from "@getaway-cards/shared";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 import { RoomManager } from "../src/roomManager.js";
 import { VoiceSignalingService } from "../src/voiceSignaling.js";
@@ -46,10 +47,10 @@ function setupVoiceRoom() {
     turnUrls: [],
     turnCredentialTtlSeconds: 3600
   });
-  return { manager, voice, alice, bob, aliceSocket, bobSocket };
+  return { manager, voice, io, alice, bob, aliceSocket, bobSocket };
 }
 
-test("voice discovery includes only opted-in seated humans", () => {
+test("voice discovery includes only opted-in seated humans and defers peer discovery until after join", async () => {
   const { voice, alice, bob, aliceSocket, bobSocket } = setupVoiceRoom();
   const first = voice.join(aliceSocket as never, { roomId: alice.roomCode! });
   const second = voice.join(bobSocket as never, { roomId: bob.roomCode! });
@@ -58,6 +59,42 @@ test("voice discovery includes only opted-in seated humans", () => {
   assert.equal(first.participants?.length, 1);
   assert.deepEqual(second.participants?.map((participant) => participant.displayName).sort(), ["Alice", "Bob"]);
   assert.deepEqual(second.iceServers, [{ urls: ["stun:test.example:3478"] }]);
+  assert.equal(aliceSocket.events.some((item) => item.event === "voice:participants"), false);
+
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const discovery = aliceSocket.events.filter((item) => item.event === "voice:participants").at(-1)?.payload as {
+    participants: Array<{ displayName: string }>;
+  };
+  assert.deepEqual(discovery.participants.map((participant) => participant.displayName).sort(), ["Alice", "Bob"]);
+});
+
+test("voice join returns short-lived TURN relay credentials when configured", () => {
+  const { manager, io, alice, aliceSocket } = setupVoiceRoom();
+  const secret = "test-turn-rest-secret";
+  const voice = new VoiceSignalingService(io as never, manager, {
+    stunUrls: ["stun:test.example:3478"],
+    turnUrls: [
+      "turn:relay.example:80?transport=udp",
+      "turns:relay.example:443?transport=tcp"
+    ],
+    turnRestSecret: secret,
+    turnCredentialTtlSeconds: 3600
+  });
+
+  const response = voice.join(aliceSocket as never, { roomId: alice.roomCode! });
+  const relay = response.iceServers?.[1];
+
+  assert.equal(response.ok, true);
+  assert.deepEqual(relay?.urls, [
+    "turn:relay.example:80?transport=udp",
+    "turns:relay.example:443?transport=tcp"
+  ]);
+  assert.match(relay?.username ?? "", /^\d+:/);
+  assert.equal(
+    relay?.credential,
+    createHmac("sha1", secret).update(relay?.username ?? "").digest("base64")
+  );
+  assert.ok(Number((relay?.username ?? "0:").split(":", 1)[0]) > Math.floor(Date.now() / 1000));
 });
 
 test("voice offer identity is server-derived and delivered only inside the room", () => {

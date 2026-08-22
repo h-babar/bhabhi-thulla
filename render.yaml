@@ -22,8 +22,8 @@ services:
       - key: VOICE_STUN_URLS
         value: stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302
       - key: VOICE_TURN_URLS
-        sync: false
+        value: turn:staticauth.openrelay.metered.ca:80?transport=udp,turn:staticauth.openrelay.metered.ca:80?transport=tcp,turns:staticauth.openrelay.metered.ca:443?transport=tcp
       - key: VOICE_TURN_REST_SECRET
-        sync: false
+        value: openrelayprojectsecret
       - key: VOICE_TURN_CREDENTIAL_TTL_SECONDS
         value: 3600

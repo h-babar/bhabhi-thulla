@@ -101,7 +101,15 @@ export class VoiceSignalingService {
     };
     this.participantsBySocket.set(socket.id, participant);
     const participants = this.publicParticipants(verified.roomId);
-    this.broadcastParticipants(verified.roomId);
+    // Let the join acknowledgement reach the new client before peers can offer.
+    // Otherwise a fast existing peer can send SDP while the new client is still
+    // in its pre-join state and that first offer is lost.
+    queueMicrotask(() => {
+      const current = this.participantsBySocket.get(socket.id);
+      if (current?.roomId === verified.roomId && current.playerId === verified.playerId) {
+        this.broadcastParticipants(verified.roomId);
+      }
+    });
 
     return {
       ok: true,
